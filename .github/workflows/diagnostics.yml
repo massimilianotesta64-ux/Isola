@@ -8,30 +8,38 @@ permissions:
 jobs:
   diag:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
+      - name: Probe repos
+        run: python3 diag/probe.py 2>&1 | tee diag/out-probe.txt
       - name: Install
         run: |
+          pip install onnx >/dev/null
+          cd diag && npm init -y >/dev/null && npm i onnxruntime-web@1.23.2 onnxruntime-node@1.23.2 >/dev/null
+      - name: Download candidates
+        run: |
+          cd diag && mkdir -p m
+          dl(){ curl -sSL -o "m/$2" "https://huggingface.co/$1/resolve/main/$3" && ls -la "m/$2"; }
+          dl StemSplitio/htdemucs-6s-onnx ss6_fp32.onnx htdemucs_6s.onnx
+          dl Andremi/audioweb-models aw_s39.onnx demucs_htdemucs_6s_s39_fp16w_ca.onnx
+          dl Andremi/audioweb-models aw_s78.onnx demucs_htdemucs_6s_s78_fp16w_ca.onnx
+          dl timcsy/demucs-web-onnx tim4.onnx htdemucs_embedded.onnx
+          for f in $(python3 -c "import json,urllib.request;d=json.load(urllib.request.urlopen('https://huggingface.co/api/models/kramp/htdemucs-6s-webgpu-onnx/tree/main?recursive=1'));print(' '.join(x['path'] for x in d if x['path'].endswith('.onnx')))"); do dl kramp/htdemucs-6s-webgpu-onnx "kramp_$(basename $f)" "$f"; done
+          for f in m/*.onnx; do [ -s "$f.data" ] || true; done
+          ls -la m
+      - name: Inspect + test
+        continue-on-error: true
+        run: |
           cd diag
-          npm init -y >/dev/null
-          npm i onnxruntime-web@1.23.2 onnxruntime-node@1.23.2 playwright@1.48.2 >/dev/null
-          npx playwright install --with-deps chromium >/dev/null
-      - name: Download model
-        run: |
-          curl -sSL -o diag/model.onnx https://huggingface.co/StemSplitio/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx
-          ls -la diag/model.onnx
-      - name: ORT node test
-        continue-on-error: true
-        run: cd diag && node --max-old-space-size=6000 ort-test.mjs 2>&1 | tee out-ort.txt
-      - name: Browser test on live site
-        continue-on-error: true
-        run: cd diag && timeout 1500 node browser-test.mjs 2>&1 | tee out-browser.txt
+          for f in m/*.onnx; do python3 inspect_model.py "$f"; done 2>&1 | tee out-inspect.txt
+          for f in m/*.onnx; do echo "######## $f"; timeout 600 node --max-old-space-size=6000 wasm-test.mjs "$f"; done 2>&1 | tee out-wasm.txt
       - name: Save results
+        if: always()
         run: |
-          cd diag && rm -rf node_modules package*.json model.onnx
+          cd diag && rm -rf node_modules package*.json m model.onnx
           git config user.name "isola-diagnostics"
           git config user.email "actions@users.noreply.github.com"
-          git add -A . && git commit -m "diagnostic results" && git push || true
+          git add -A . && git commit -m "diagnostic results 2" && git push || true
