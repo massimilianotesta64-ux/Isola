@@ -132,14 +132,19 @@ function looksValid(input, out) {
 self.onmessage = async (ev) => {
   const m = ev.data;
   if (m.type !== 'run') return;
+  let stage = 'starting';
   try {
     ort.env.wasm.wasmPaths = CDN;
     const cores = (self.navigator && navigator.hardwareConcurrency) || 2;
     ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, Math.min(4, cores - 1)) : 1;
+    stage = 'loading the AI model';
     const bytes = await getModel();
+    stage = 'starting the splitter';
     post({ type: 'status', text: 'Starting the splitter…' });
     let session = null, ep = 'wasm';
-    if (m.engine !== 'cpu' && self.navigator && navigator.gpu) {
+    // The 6-stem model contains an op the WebGPU backend can't run, and a failed
+    // WebGPU attempt can crash the whole engine, so only the processor route is used.
+    if (false) {
       try {
         const adapter = await navigator.gpu.requestAdapter();
         if (adapter) { session = await makeSession(bytes, 'webgpu'); ep = 'webgpu'; }
@@ -149,6 +154,7 @@ self.onmessage = async (ev) => {
     const engineLabel = () => ep === 'webgpu' ? 'Graphics chip (WebGPU)' : ('Processor · ' + ort.env.wasm.numThreads + (ort.env.wasm.numThreads > 1 ? ' threads' : ' thread'));
     post({ type: 'engine', ep, label: engineLabel() });
     let modelBytes = bytes;
+    stage = 'splitting';
     const runChunk = async (input, k) => {
       const t = performance.now();
       let out;
@@ -173,6 +179,7 @@ self.onmessage = async (ev) => {
     try { await session.release(); } catch (e) {}
     post({ type: 'done', ep });
   } catch (e) {
-    post({ type: 'error', message: (e && e.message) || String(e) });
+    const msg = (e && e.message) || String(e);
+    post({ type: 'error', message: 'Error while ' + (typeof stage === 'string' ? stage : 'starting') + ': ' + msg + ' [threads: ' + ort.env.wasm.numThreads + ', isolated: ' + self.crossOriginIsolated + ']' });
   }
 };

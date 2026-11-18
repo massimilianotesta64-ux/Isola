@@ -189,7 +189,7 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-w
 <!-- ================= APP ================= -->
 <script>
 'use strict';
-const VERSION = '1.0.1';
+const VERSION = '1.0.2';
 const SR = 44100;
 const SS_URL = new URL('lib/SignalsmithStretch.mjs', location.href).href;
 // model output order: 0 drums, 1 bass, 2 other, 3 vocals, 4 guitar, 5 piano
@@ -232,7 +232,7 @@ function loading(text) {
   document.body.appendChild(d); return { set: t => d.firstChild.textContent = t, close: () => d.remove() };
 }
 function errorSheet(title, msg) {
-  sheet('<h3>' + esc(title) + '</h3><p>' + esc(msg) + '</p><p class="small muted">Tips: close other apps and try again. If it keeps failing, open Settings and set the engine to “Processor only”.</p><div class="row"><button class="primary" data-x>OK</button></div>',
+  sheet('<h3>' + esc(title) + '</h3><p>' + esc(msg) + '</p><p class="small muted">Tips: close other apps and tabs, then try again. If it keeps failing, send a screenshot of this message.</p><div class="row"><button class="primary" data-x>OK</button></div>',
     (s, close) => $('[data-x]', s).onclick = close);
 }
 
@@ -810,8 +810,6 @@ $('#btn-settings').onclick = async () => {
   let usage = '';
   try { const est = await navigator.storage.estimate(); usage = mb(est.usage || 0) + ' used'; } catch (e) {}
   sheet(`<h3>Settings</h3>
-    <label class="f">Splitting engine</label>
-    <select id="s-eng"><option value="auto">Automatic (graphics chip when available)</option><option value="cpu">Processor only (more compatible)</option></select>
     <label class="f">MP3 quality</label>
     <select id="s-q"><option value="128">Smaller files (128 kbps)</option><option value="192">Standard (192 kbps)</option><option value="256">High (256 kbps)</option></select>
     <label class="f">Storage</label>
@@ -819,8 +817,7 @@ $('#btn-settings').onclick = async () => {
     ${cached ? '<button class="ghost" id="s-rm" style="width:100%;margin-top:10px">Remove the AI model</button>' : ''}
     <p class="small muted" style="margin-top:18px">Isola ${VERSION}. Separation uses the open-source HT-Demucs 6-source model by Meta AI (MIT licence), running on this phone. Isolate only music you have the right to use.</p>
     <div class="row"><button class="primary" data-x>Done</button></div>`, (s, close) => {
-    $('#s-eng', s).value = settings.engine; $('#s-q', s).value = String(settings.kbps);
-    $('#s-eng', s).onchange = e => { settings.engine = e.target.value; saveSettings(); };
+    $('#s-q', s).value = String(settings.kbps);
     $('#s-q', s).onchange = e => { settings.kbps = +e.target.value; saveSettings(); };
     const rm = $('#s-rm', s);
     if (rm) rm.onclick = async () => { try { await caches.delete('isola-model-v1'); } catch (e) {} close(); toast('AI model removed. It will download again next time.'); };

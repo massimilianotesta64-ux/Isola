@@ -1,6 +1,6 @@
 // Isola service worker: works offline and enables multi-threaded splitting
 // (adds the cross-origin isolation headers GitHub Pages can't set itself).
-const APP_CACHE = 'isola-app-v2';
+const APP_CACHE = 'isola-app-v3';
 const LIB_CACHE = 'isola-libs-v1';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './sep-worker.js', './enc-worker.js', './lib/lame.min.js', './lib/SignalsmithStretch.mjs'];
 
