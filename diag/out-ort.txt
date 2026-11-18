@@ -1,0 +1,30 @@
+=== onnxruntime-node cpu
+session ok 4046 ms 4224 MB rss in [ 'mix' ] out [ 'stems' ]
+run ok 3404 ms dims [ 1, 6, 2, 343980 ] recon err 0.0007 4227 MB rss
+=== onnxruntime-web wasm 1 thread, app options
+[0;93m2026-11-18 15:36:55.307705 [W:onnxruntime:Default, cpuid_info.cc:91 LogEarlyWarning] Unknown CPU vendor. cpuinfo_vendor value: 0[m
+Aborted()
+FAILED RuntimeError: Aborted(). Build with -sASSERTIONS for more info.
+    at O (file:///home/runner/work/Isola/Isola/diag/node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs:15:96)
+    at eb (file:///home/runner/work/Isola/Isola/diag/node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs:26:184)
+    at wasm://wasm/02d6a816:wasm-function[1228]:0xc3c37
+    at wasm://wasm/02d6a816:wasm-function[275]:0x26dd6
+    at wasm://wasm/02d6a816:wasm-function[521]:0x42656
+    at wasm://wasm/02d6a816:wasm-function[2116]:0x1648b2
+    at wasm://wasm/02d6a816:wasm-function[12163]:0x8b2419
+    at wasm://wasm/02d6a816:wasm-function[202]:0x1bac5
+    at wasm://wasm/02d6a816:wasm-function[287]:0x2864b
+    at wasm://wasm/02d6a816:wasm-function[9019]:0x710f7b
+=== onnxruntime-web wasm 1 thread, basic opt
+Aborted()
+FAILED RuntimeError: Aborted(). Build with -sASSERTIONS for more info.
+    at O (file:///home/runner/work/Isola/Isola/diag/node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs:15:96)
+    at eb (file:///home/runner/work/Isola/Isola/diag/node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs:26:184)
+    at wasm://wasm/02d6a816:wasm-function[1228]:0xc3c37
+    at wasm://wasm/02d6a816:wasm-function[275]:0x26dd6
+    at wasm://wasm/02d6a816:wasm-function[521]:0x42656
+    at wasm://wasm/02d6a816:wasm-function[53]:0xcf91
+    at wasm://wasm/02d6a816:wasm-function[1108]:0x937f7
+    at wasm://wasm/02d6a816:wasm-function[1380]:0xdfd5f
+    at wasm://wasm/02d6a816:wasm-function[262]:0x25b9d
+    at wasm://wasm/02d6a816:wasm-function[346]:0x317c2
