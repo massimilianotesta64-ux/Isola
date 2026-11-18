@@ -1,0 +1,8 @@
+s78 pipeline ms 4502
+drums   SNR vs official 126.3 dB   (middle 126.1 dB)   energy 4.09e+4
+bass    SNR vs official 137.3 dB   (middle 137.4 dB)   energy 5.65e+5
+other   SNR vs official 127.0 dB   (middle 126.9 dB)   energy 6.36e+4
+vocals  SNR vs official 74.0 dB   (middle 71.8 dB)   energy 5.65e-2
+guitar  SNR vs official 73.3 dB   (middle 69.7 dB)   energy 3.10e-2
+piano   SNR vs official 77.6 dB   (middle 76.9 dB)   energy 5.64e-2
+s39: stems sum vs input SNR 34.5 dB

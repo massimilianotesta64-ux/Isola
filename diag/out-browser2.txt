@@ -1,0 +1,29 @@
+[light] 15:52:26 isolated=true version=1.1.0
+[light] 15:52:29 Splitting into 6 tracks… | Engine: Light model · 3 threads | 0% | false | 
+[light] 15:52:35 Splitting into 6 tracks… | Part 1 of 14 · about 58 s left · Light model · 3 threads | 7% | false | 
+[light] 15:52:41 Splitting into 6 tracks… | Part 2 of 14 · about 60 s left · Light model · 3 threads | 14% | false | 
+[light] 15:52:47 Splitting into 6 tracks… | Part 3 of 14 · about 56 s left · Light model · 3 threads | 21% | false | 
+[light] 15:52:50 Splitting into 6 tracks… | Part 4 of 14 · about 51 s left · Light model · 3 threads | 28% | false | 
+[light] 15:52:56 Splitting into 6 tracks… | Part 5 of 14 · about 46 s left · Light model · 3 threads | 35% | false | 
+[light] 15:53:02 Splitting into 6 tracks… | Part 6 of 14 · about 40 s left · Light model · 3 threads | 42% | false | 
+[light] 15:53:05 Splitting into 6 tracks… | Part 7 of 14 · about 35 s left · Light model · 3 threads | 49% | false | 
+[light] 15:53:08 Splitting into 6 tracks… | Part 8 of 14 · about 30 s left · Light model · 3 threads | 55% | false | 
+[light] 15:53:14 Splitting into 6 tracks… | Part 9 of 14 · about 25 s left · Light model · 3 threads | 62% | false | 
+[light] 15:53:20 Splitting into 6 tracks… | Part 10 of 14 · about 20 s left · Light model · 3 threads | 69% | false | 
+[light] 15:53:23 Splitting into 6 tracks… | Part 11 of 14 · about 15 s left · Light model · 3 threads | 76% | false | 
+[light] 15:53:29 Splitting into 6 tracks… | Part 12 of 14 · about 10 s left · Light model · 3 threads | 83% | false | 
+[light] 15:53:32 Splitting into 6 tracks… | Part 13 of 14 · about 5 s left · Light model · 3 threads | 90% | false | 
+[light] 15:53:38 Done! |  | 100% | true | 
+[light] 15:53:38 elapsed 72 s, ok=true
+[light] 15:53:40 stem RMS {"vocals":"0.0017","guitar":"0.0485","bass":"0.1245","drums":"0.0176","piano":"0.0018","other":"0.0018"}
+[full] 15:53:42 isolated=true version=1.1.0
+[full] 15:53:45 Splitting into 6 tracks… | Engine: Full model · 3 threads | 0% | false | 
+[full] 15:53:57 Splitting into 6 tracks… | Part 1 of 7 · about 59 s left · Full model · 3 threads | 14% | false | 
+[full] 15:54:06 Splitting into 6 tracks… | Part 2 of 7 · about 52 s left · Full model · 3 threads | 28% | false | 
+[full] 15:54:18 Splitting into 6 tracks… | Part 3 of 7 · about 41 s left · Full model · 3 threads | 42% | false | 
+[full] 15:54:27 Splitting into 6 tracks… | Part 4 of 7 · about 31 s left · Full model · 3 threads | 55% | false | 
+[full] 15:54:36 Splitting into 6 tracks… | Part 5 of 7 · about 20 s left · Full model · 3 threads | 69% | false | 
+[full] 15:54:45 Splitting into 6 tracks… | Part 6 of 7 · about 10 s left · Full model · 3 threads | 83% | false | 
+[full] 15:54:57 Done! |  | 100% | true | 
+[full] 15:54:57 elapsed 75 s, ok=true
+[full] 15:54:59 stem RMS {"vocals":"0.0017","guitar":"0.0519","bass":"0.1248","drums":"0.0160","piano":"0.0018","other":"0.0018"}
