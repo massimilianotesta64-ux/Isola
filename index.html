@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e0f13">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Isola">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>Isola · Stem Splitter</title>
+<style>
+:root{
+  --bg:#0e0f13;--card:#171920;--card2:#1f222b;--line:#2a2e39;--text:#eef0f5;--muted:#8b90a0;
+  --accent:#7c5cff;--accent2:#a48bff;--danger:#ff5d6c;--ok:#3ddc97;
+  --safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+body{min-height:100vh;overscroll-behavior-y:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
+[hidden]{display:none!important}
+.view{max-width:720px;margin:0 auto;padding:calc(var(--safe-t) + 8px) 16px calc(var(--safe-b) + 24px)}
+.top{display:flex;align-items:center;gap:8px;min-height:52px;margin-bottom:8px}
+.top .title{flex:1;font-weight:700;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.brand{flex:1;display:flex;align-items:center;gap:10px;font-weight:800;font-size:24px;letter-spacing:-.02em}
+.logo{width:30px;height:30px;border-radius:9px;background:conic-gradient(#ff5c8a,#ffb020,#3fb6ff,#ff6b3d,#7ee081,#b18cff,#ff5c8a);position:relative}
+.logo:after{content:"";position:absolute;inset:8px;border-radius:50%;background:var(--bg)}
+.icon-btn{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:22px;color:var(--text);background:var(--card)}
+.icon-btn:active{background:var(--card2)}
+.primary{background:var(--accent);color:#fff;border-radius:14px;padding:14px 18px;font-weight:700}
+.primary:active{background:#6a49f0}
+.primary.big{width:100%;font-size:18px;padding:18px}
+.ghost{border:1px solid var(--line);border-radius:14px;padding:12px 18px;color:var(--text)}
+.danger{color:var(--danger)}
+.muted{color:var(--muted)}.small{font-size:13px}.center{text-align:center}
+.hero{background:linear-gradient(160deg,#1d1838,#151722 60%);border:1px solid #2b2650;border-radius:20px;padding:18px;margin:4px 0 20px}
+.hero p{margin:0 0 14px;color:#c9cbe0}
+.section{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:8px 4px 10px;font-weight:700}
+.song{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:12px 12px 12px 14px;margin-bottom:10px}
+.song .meta{flex:1;min-width:0}
+.song .name{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song .sub{font-size:13px;color:var(--muted)}
+.song .dots{width:40px;height:40px;border-radius:10px;font-size:20px;color:var(--muted)}
+.stripes{width:44px;height:44px;border-radius:12px;display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:8px;background:var(--card2);align-items:end}
+.stripes i{display:block;border-radius:2px}
+/* processing */
+.proc{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding-top:24px}
+.pct{font-size:56px;font-weight:800;letter-spacing:-.03em}
+.bar{width:100%;height:10px;border-radius:6px;background:var(--card2);overflow:hidden}
+.bar>div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#ff5c8a);transition:width .3s}
+.step{font-weight:650;font-size:17px}
+.tip{background:var(--card);border-radius:14px;padding:12px 14px;font-size:14px;color:#c9cbe0;text-align:left}
+.eq{display:flex;gap:6px;height:48px;align-items:end}
+.eq i{width:10px;border-radius:4px;animation:eq 1s ease-in-out infinite}
+@keyframes eq{0%,100%{height:20%}50%{height:100%}}
+/* player */
+.tracks{display:flex;flex-direction:column;gap:10px;padding-bottom:250px}
+.track{background:var(--card);border-radius:16px;padding:10px 12px;border-left:4px solid var(--c);transition:opacity .15s}
+.track.off{opacity:.42}
+.trow{display:flex;align-items:center;gap:10px}
+.toggle{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-align:left;padding:4px 0}
+.box{width:26px;height:26px;border-radius:8px;border:2px solid var(--c);display:grid;place-items:center;flex:none;font-size:16px;font-weight:900;color:#0e0f13}
+.track:not(.muted) .box{background:var(--c)}
+.track:not(.muted) .box:after{content:"✓"}
+.tname{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tnote{font-size:12px;color:var(--muted);font-weight:500;margin-left:6px}
+.tb{min-width:44px;height:36px;border-radius:10px;background:var(--card2);font-weight:800;font-size:13px;color:var(--muted);padding:0 10px}
+.tb.solo.on{background:#ffd34d;color:#1a1500}
+.wave{position:relative;height:44px;margin:8px 0 6px;border-radius:8px;overflow:hidden;background:#12141a;touch-action:none}
+.wave canvas{width:100%;height:100%;display:block}
+.wave .ph{position:absolute;top:0;bottom:0;width:2px;background:#fff;left:0;opacity:.9;pointer-events:none}
+.wave .lb{position:absolute;top:0;bottom:0;background:rgba(124,92,255,.22);pointer-events:none}
+.volrow{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}
+.volrow span{width:40px;text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:4px;background:var(--line)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;margin-top:-8px;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-track{height:6px;border-radius:4px;background:var(--line)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:0}
+.vol::-webkit-slider-thumb{background:var(--c)!important}
+.transport{position:fixed;left:0;right:0;bottom:0;background:rgba(14,15,19,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:10px 16px calc(var(--safe-b) + 10px);z-index:5}
+.transport .inner{max-width:720px;margin:0 auto}
+.seekwrap{position:relative}
+.loopband{position:absolute;top:9px;height:10px;background:rgba(124,92,255,.55);border-radius:4px;pointer-events:none}
+.times{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:-2px}
+.ctrl{display:flex;align-items:center;justify-content:center;gap:22px;margin:4px 0 10px}
+.ctrl .sk{width:56px;height:44px;border-radius:12px;background:var(--card);font-weight:700;font-size:14px}
+.play{width:64px;height:64px;border-radius:50%;background:#fff;color:#0e0f13;font-size:26px;display:grid;place-items:center}
+.play:active{transform:scale(.96)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:36px;border-radius:18px;padding:0 14px;background:var(--card);font-size:14px;font-weight:650;white-space:nowrap}
+.chip.on{background:var(--accent);color:#fff}
+.chip.set{box-shadow:inset 0 0 0 2px var(--accent2)}
+/* sheet */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s}
+.sheet{width:100%;max-width:720px;background:#16181f;border-radius:22px 22px 0 0;padding:10px 18px calc(var(--safe-b) + 18px);max-height:88vh;overflow:auto;animation:up .2s ease-out}
+.sheet .grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+.sheet h3{margin:4px 0 6px;font-size:20px}
+.sheet p{color:#c9cbe0;margin:6px 0 12px}
+.sheet .row{display:flex;gap:10px;margin-top:14px}
+.sheet .row>*{flex:1}
+.list-btn{display:flex;align-items:center;gap:12px;width:100%;padding:14px 4px;border-bottom:1px solid var(--line);text-align:left}
+.list-btn:last-child{border-bottom:0}
+.list-btn .dot{width:12px;height:12px;border-radius:50%;flex:none}
+.list-btn .lbl{flex:1}
+.list-btn .act{color:var(--accent2);font-weight:700}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.presets button{flex:1;min-width:56px;height:40px;border-radius:12px;background:var(--card2);font-weight:700}
+.presets button.on{background:var(--accent);color:#fff}
+.big-val{font-size:40px;font-weight:800;text-align:center;margin:6px 0}
+select,input[type=text]{width:100%;font:inherit;color:var(--text);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px}
+label.f{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-weight:650}
+.toast{position:fixed;left:50%;bottom:calc(var(--safe-b) + 200px);transform:translateX(-50%);background:#2a2d38;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;max-width:90vw;text-align:center;animation:fade .2s}
+.loading{position:fixed;inset:0;background:rgba(14,15,19,.85);display:grid;place-items:center;z-index:15;text-align:center;font-weight:650}
+@keyframes fade{from{opacity:0}}
+@keyframes up{from{transform:translateY(40px);opacity:.5}}
+</style>
+</head>
+<body>
+
+<!-- LIBRARY -->
+<section id="v-lib" class="view">
+  <header class="top">
+    <div class="brand"><span class="logo"></span>Isola</div>
+    <button class="icon-btn" id="btn-settings" aria-label="Settings">⚙︎</button>
+  </header>
+  <div class="hero">
+    <p>Split any song into <b>vocals, guitar, bass, drums, piano</b> and <b>other</b>, then play each one on its own. It all happens on your phone. Nothing is uploaded.</p>
+    <button class="primary big" id="btn-add">＋ Add a song</button>
+    <input type="file" id="file" accept="audio/*,.mp3,.m4a,.wav,.flac,.aac,.ogg" hidden>
+  </div>
+  <div class="section">Your library</div>
+  <div id="lib-list"></div>
+  <p id="lib-empty" class="muted center" hidden>No songs yet. Add an MP3 to get started.</p>
+  <p id="storage" class="muted small center"></p>
+</section>
+
+<!-- PROCESSING -->
+<section id="v-proc" class="view" hidden>
+  <header class="top"><div class="title" id="proc-title"></div></header>
+  <div class="proc">
+    <div class="eq"><i style="background:#ff5c8a"></i><i style="background:#ffb020;animation-delay:.15s"></i><i style="background:#3fb6ff;animation-delay:.3s"></i><i style="background:#ff6b3d;animation-delay:.45s"></i><i style="background:#7ee081;animation-delay:.6s"></i><i style="background:#b18cff;animation-delay:.75s"></i></div>
+    <div class="pct" id="proc-pct">0%</div>
+    <div class="bar"><div id="proc-bar"></div></div>
+    <div class="step" id="proc-step">Getting ready…</div>
+    <div class="muted small" id="proc-detail"></div>
+    <div class="tip">Keep Isola open with the screen on until it finishes. Locking the phone or switching apps pauses the split.</div>
+    <button class="ghost" id="btn-cancel">Cancel</button>
+  </div>
+</section>
+
+<!-- PLAYER -->
+<section id="v-play" class="view" hidden>
+  <header class="top">
+    <button class="icon-btn" id="btn-back" aria-label="Back">‹</button>
+    <div class="title" id="pl-title"></div>
+    <button class="icon-btn" id="btn-export" aria-label="Export">⤓</button>
+  </header>
+  <div class="tracks" id="tracks"></div>
+  <div class="transport" id="transport" hidden>
+    <div class="inner">
+      <div class="seekwrap"><div class="loopband" id="loopband" hidden></div><input type="range" id="seek" min="0" max="1000" step="1" value="0" aria-label="Position"></div>
+      <div class="times"><span id="t-cur">0:00</span><span id="t-dur">0:00</span></div>
+      <div class="ctrl">
+        <button class="sk" id="btn-rw">−5s</button>
+        <button class="play" id="btn-play" aria-label="Play">▶</button>
+        <button class="sk" id="btn-ff">+5s</button>
+      </div>
+      <div class="chips">
+        <button class="chip" id="chip-speed">Speed 100%</button>
+        <button class="chip" id="chip-key">Key 0</button>
+        <button class="chip" id="chip-a">A</button>
+        <button class="chip" id="chip-b">B</button>
+        <button class="chip" id="chip-loop">⟲ Loop</button>
+        <button class="chip" id="chip-clear" hidden>✕ Clear loop</button>
+        <button class="chip" id="chip-all">All tracks on</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SPLITTER WORKER (module) ================= -->
+<script type="text/plain" id="w-sep">
+import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.webgpu.min.mjs';
+const CDN = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
+const MODEL_URLS = [
+  'https://huggingface.co/StemSplitio/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx',
+  'https://huggingface.co/adowu/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx'
+];
+const CACHE_NAME = 'isola-model-v1';
+const CACHE_KEY = self.location.origin + '/__model__/htdemucs_6s_fp16weights.onnx';
+const SEG = 343980;
+const post = (m, t) => self.postMessage(m, t || []);
+
+// ---- shared overlap-add core (also unit-tested) ----
+async function separate(L, R, runChunk, emit, progress) {
+  const N = L.length;
+  const OVERLAP = Math.floor(SEG / 4), STRIDE = SEG - OVERLAP, ROWS = 12;
+  // global normalisation, as in the official Demucs pipeline
+  let sum = 0;
+  for (let i = 0; i < N; i++) sum += (L[i] + R[i]) * 0.5;
+  const mean = sum / N;
+  let vs = 0;
+  for (let i = 0; i < N; i++) { const d = (L[i] + R[i]) * 0.5 - mean; vs += d * d; }
+  let std = Math.sqrt(vs / Math.max(1, N - 1));
+  if (!(std > 1e-8)) std = 1;
+  // triangular transition window
+  const W = new Float32Array(SEG), half = SEG >> 1;
+  for (let i = 0; i < SEG; i++) W[i] = i < half ? (i + 1) / half : (SEG - i) / half;
+  const offs = [];
+  for (let off = 0; ; off += STRIDE) { offs.push(off); if (off + SEG >= N) break; }
+  const acc = new Float32Array(ROWS * SEG), wsum = new Float32Array(SEG), input = new Float32Array(2 * SEG);
+  for (let k = 0; k < offs.length; k++) {
+    const off = offs[k], len = Math.min(SEG, N - off), last = k === offs.length - 1;
+    input.fill(0);
+    for (let i = 0; i < len; i++) { input[i] = (L[off + i] - mean) / std; input[SEG + i] = (R[off + i] - mean) / std; }
+    const out = await runChunk(input, k);
+    for (let r = 0; r < ROWS; r++) {
+      const b = r * SEG;
+      for (let i = 0; i < len; i++) acc[b + i] += out[b + i] * W[i];
+    }
+    for (let i = 0; i < len; i++) wsum[i] += W[i];
+    const emitLen = last ? len : STRIDE;
+    const rows = [];
+    for (let r = 0; r < ROWS; r++) {
+      const b = r * SEG, o = new Float32Array(emitLen);
+      for (let i = 0; i < emitLen; i++) o[i] = acc[b + i] / Math.max(wsum[i], 1e-8) * std + mean;
+      rows.push(o);
+    }
+    emit(rows, k);
+    if (!last) {
+      for (let r = 0; r < ROWS; r++) {
+        const b = r * SEG;
+        acc.copyWithin(b, b + STRIDE, b + SEG);
+        acc.fill(0, b + SEG - STRIDE, b + SEG);
+      }
+      wsum.copyWithin(0, STRIDE, SEG);
+      wsum.fill(0, SEG - STRIDE, SEG);
+    }
+    progress(k + 1, offs.length);
+  }
+}
+
+async function getModel() {
+  let cache = null;
+  try { cache = await caches.open(CACHE_NAME); } catch (e) {}
+  if (cache) {
+    try {
+      const hit = await cache.match(CACHE_KEY);
+      if (hit) { post({ type: 'status', text: 'Loading the AI model…' }); return new Uint8Array(await hit.arrayBuffer()); }
+    } catch (e) {}
+  }
+  let lastErr = null;
+  for (const url of MODEL_URLS) {
+    try {
+      post({ type: 'status', text: 'Downloading the AI model (first time only)…' });
+      const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const total = +res.headers.get('content-length') || 0;
+      const reader = res.body.getReader();
+      let buf = total ? new Uint8Array(total) : null, parts = [], got = 0, t0 = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (buf && got + value.length <= total) buf.set(value, got);
+        else { if (buf) { parts.push(buf.slice(0, got)); buf = null; } parts.push(value); }
+        got += value.length;
+        const now = Date.now();
+        if (now - t0 > 250) { t0 = now; post({ type: 'download', got, total }); }
+      }
+      let bytes;
+      if (buf && got === total) bytes = buf;
+      else {
+        if (buf) parts.unshift(buf.slice(0, got));
+        bytes = new Uint8Array(got); let o = 0;
+        for (const p of parts) { bytes.set(p, o); o += p.length; }
+      }
+      if (bytes.length < 50e6) throw new Error('Model download looks incomplete');
+      if (cache) { try { await cache.put(CACHE_KEY, new Response(bytes, { headers: { 'content-type': 'application/octet-stream' } })); } catch (e) {} }
+      return bytes;
+    } catch (e) { lastErr = e; }
+  }
+  throw new Error('Could not download the AI model. Check your internet connection. (' + (lastErr && lastErr.message) + ')');
+}
+
+async function makeSession(bytes, ep) {
+  const opts = ep === 'webgpu'
+    ? { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' }
+    : { executionProviders: ['wasm'], graphOptimizationLevel: 'all', enableCpuMemArena: false, enableMemPattern: false };
+  return ort.InferenceSession.create(bytes, opts);
+}
+
+async function runWith(session, input) {
+  const feeds = {};
+  feeds[session.inputNames[0]] = new ort.Tensor('float32', input, [1, 2, SEG]);
+  const res = await session.run(feeds);
+  const t = res[session.outputNames[0]];
+  let d = t.data;
+  if (t.location && t.location !== 'cpu') d = await t.getData(true);
+  return d;
+}
+
+function looksValid(input, out) {
+  // the six stems should add up (roughly) to the input mix
+  let e = 0, s = 0;
+  for (let c = 0; c < 2; c++) for (let i = 0; i < SEG; i += 7) {
+    let y = 0;
+    for (let st = 0; st < 6; st++) y += out[(st * 2 + c) * SEG + i];
+    if (!Number.isFinite(y)) return false;
+    const x = input[c * SEG + i]; e += (y - x) * (y - x); s += x * x;
+  }
+  return s < 1e-6 || e / s < 0.5;
+}
+
+self.onmessage = async (ev) => {
+  const m = ev.data;
+  if (m.type !== 'run') return;
+  try {
+    ort.env.wasm.wasmPaths = CDN;
+    const cores = (self.navigator && navigator.hardwareConcurrency) || 2;
+    ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, Math.min(4, cores - 1)) : 1;
+    const bytes = await getModel();
+    post({ type: 'status', text: 'Starting the splitter…' });
+    let session = null, ep = 'wasm';
+    if (m.engine !== 'cpu' && self.navigator && navigator.gpu) {
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (adapter) { session = await makeSession(bytes, 'webgpu'); ep = 'webgpu'; }
+      } catch (e) { session = null; }
+    }
+    if (!session) { session = await makeSession(bytes, 'wasm'); ep = 'wasm'; }
+    const engineLabel = () => ep === 'webgpu' ? 'Graphics chip (WebGPU)' : ('Processor · ' + ort.env.wasm.numThreads + (ort.env.wasm.numThreads > 1 ? ' threads' : ' thread'));
+    post({ type: 'engine', ep, label: engineLabel() });
+    let modelBytes = bytes;
+    const runChunk = async (input, k) => {
+      const t = performance.now();
+      let out;
+      try { out = await runWith(session, input); }
+      catch (e) {
+        if (ep !== 'webgpu') throw e;
+        out = null;
+      }
+      if (k === 0 && ep === 'webgpu' && (!out || !looksValid(input, out))) {
+        try { await session.release(); } catch (e) {}
+        session = await makeSession(modelBytes, 'wasm'); ep = 'wasm';
+        post({ type: 'engine', ep, label: engineLabel() });
+        out = await runWith(session, input);
+      }
+      if (k === 0) modelBytes = null;
+      post({ type: 'chunktime', ms: performance.now() - t });
+      return out;
+    };
+    await separate(m.L, m.R, runChunk,
+      (rows, k) => post({ type: 'block', k, rows }, rows.map(r => r.buffer)),
+      (done, total) => post({ type: 'progress', done, total }));
+    try { await session.release(); } catch (e) {}
+    post({ type: 'done', ep });
+  } catch (e) {
+    post({ type: 'error', message: (e && e.message) || String(e) });
+  }
+};
+</script>
+
+<!-- ================= MP3 ENCODER WORKER (classic) ================= -->
+<script type="text/plain" id="w-enc">
+var LAME_URL = 'https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
+var ready = null, encs = {}, parts = {}, kbps = 192;
+function load() {
+  if (!ready) ready = fetch(LAME_URL).then(function (r) {
+    if (!r.ok) throw new Error('Could not load the MP3 encoder');
+    return r.text();
+  }).then(function (src) {
+    importScripts(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+  });
+  return ready;
+}
+function toI16(f) {
+  var o = new Int16Array(f.length);
+  for (var i = 0; i < f.length; i++) { var s = f[i]; s = s > 1 ? 1 : s < -1 ? -1 : s; o[i] = s < 0 ? s * 32768 : s * 32767; }
+  return o;
+}
+function encode(key, l, r) {
+  var enc = encs[key], li = toI16(l), ri = toI16(r), B = 1152 * 32;
+  for (var i = 0; i < li.length; i += B) {
+    var mp3 = enc.encodeBuffer(li.subarray(i, i + B), ri.subarray(i, i + B));
+    if (mp3.length) parts[key].push(mp3);
+  }
+}
+self.onmessage = function (e) {
+  var m = e.data;
+  load().then(function () {
+    if (m.type === 'start') {
+      kbps = m.kbps || 192;
+      m.keys.forEach(function (k) { encs[k] = new lamejs.Mp3Encoder(2, 44100, kbps); parts[k] = []; });
+    } else if (m.type === 'pcm') {
+      encode(m.key, m.l, m.r);
+    } else if (m.type === 'finish') {
+      var blobs = {};
+      Object.keys(encs).forEach(function (k) {
+        var f = encs[k].flush(); if (f.length) parts[k].push(f);
+        blobs[k] = new Blob(parts[k], { type: 'audio/mpeg' });
+      });
+      encs = {}; parts = {};
+      self.postMessage({ type: 'done', blobs: blobs });
+    }
+  }).catch(function (err) { self.postMessage({ type: 'error', message: String(err && err.message || err) }); });
+};
+</script>
+
+<!-- ================= APP ================= -->
+<script>
+'use strict';
+const VERSION = '1.0.0';
+const SR = 44100;
+const SS_URL = 'https://cdn.jsdelivr.net/npm/signalsmith-stretch@1.3.2/SignalsmithStretch.mjs';
+// model output order: 0 drums, 1 bass, 2 other, 3 vocals, 4 guitar, 5 piano
+const STEMS = [
+  { key: 'vocals', idx: 3, name: 'Vocals', color: '#ff5c8a' },
+  { key: 'guitar', idx: 4, name: 'Guitar', color: '#ffb020' },
+  { key: 'bass',   idx: 1, name: 'Bass',   color: '#3fb6ff' },
+  { key: 'drums',  idx: 0, name: 'Drums',  color: '#ff6b3d' },
+  { key: 'piano',  idx: 5, name: 'Piano / Keys', color: '#7ee081' },
+  { key: 'other',  idx: 2, name: 'Other',  color: '#b18cff' }
+];
+const $ = (s, el) => (el || document).querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = s => { s = Math.max(0, s || 0); const m = Math.floor(s / 60), x = Math.floor(s % 60); return m + ':' + String(x).padStart(2, '0'); };
+const mb = b => (b / 1048576).toFixed(b > 104857600 ? 0 : 1) + ' MB';
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/* ---------- settings ---------- */
+const settings = Object.assign({ engine: 'auto', kbps: 192 }, (() => { try { return JSON.parse(localStorage.getItem('isola-settings')) || {}; } catch (e) { return {}; } })());
+const saveSettings = () => { try { localStorage.setItem('isola-settings', JSON.stringify(settings)); } catch (e) {} };
+
+/* ---------- UI helpers ---------- */
+function show(id) { for (const v of document.querySelectorAll('.view')) v.hidden = v.id !== id; $('#transport').hidden = id !== 'v-play'; window.scrollTo(0, 0); }
+let toastT = null;
+function toast(msg, ms) {
+  let t = $('.toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, ms || 2600);
+}
+function sheet(html, onMount) {
+  const bd = document.createElement('div'); bd.className = 'backdrop';
+  bd.innerHTML = '<div class="sheet"><div class="grab"></div>' + html + '</div>';
+  const close = () => bd.remove();
+  bd.addEventListener('click', e => { if (e.target === bd) close(); });
+  document.body.appendChild(bd);
+  if (onMount) onMount($('.sheet', bd), close);
+  return close;
+}
+function loading(text) {
+  const d = document.createElement('div'); d.className = 'loading'; d.innerHTML = '<div>' + esc(text) + '</div>';
+  document.body.appendChild(d); return { set: t => d.firstChild.textContent = t, close: () => d.remove() };
+}
+function errorSheet(title, msg) {
+  sheet('<h3>' + esc(title) + '</h3><p>' + esc(msg) + '</p><p class="small muted">Tips: close other apps and try again. If it keeps failing, open Settings and set the engine to “Processor only”.</p><div class="row"><button class="primary" data-x>OK</button></div>',
+    (s, close) => $('[data-x]', s).onclick = close);
+}
+
+/* ---------- storage (IndexedDB) ---------- */
+const DB = {
+  p: null,
+  open() {
+    return this.p || (this.p = new Promise((res, rej) => {
+      const r = indexedDB.open('isola', 1);
+      r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('songs', { keyPath: 'id' }); d.createObjectStore('blobs'); };
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    }));
+  },
+  async run(stores, mode, fn) {
+    const d = await this.open();
+    return new Promise((res, rej) => {
+      const t = d.transaction(stores, mode); let out;
+      const r = fn(t); if (r && 'onsuccess' in r) r.onsuccess = () => out = r.result;
+      t.oncomplete = () => res(out); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('Storage full?'));
+    });
+  },
+  all() { return this.run(['songs'], 'readonly', t => t.objectStore('songs').getAll()); },
+  get(id) { return this.run(['songs'], 'readonly', t => t.objectStore('songs').get(id)); },
+  put(song) { return this.run(['songs'], 'readwrite', t => t.objectStore('songs').put(song)); },
+  save(song, blobs) {
+    return this.run(['songs', 'blobs'], 'readwrite', t => {
+      t.objectStore('songs').put(song);
+      for (const k in blobs) t.objectStore('blobs').put(blobs[k], song.id + '/' + k);
+    });
+  },
+  async blobs(id) {
+    const d = await this.open();
+    return new Promise((res, rej) => {
+      const t = d.transaction(['blobs'], 'readonly'), s = t.objectStore('blobs'), out = {};
+      for (const st of STEMS) s.get(id + '/' + st.key).onsuccess = e => out[st.key] = e.target.result;
+      t.oncomplete = () => res(out); t.onerror = () => rej(t.error);
+    });
+  },
+  del(id) {
+    return this.run(['songs', 'blobs'], 'readwrite', t => {
+      t.objectStore('songs').delete(id);
+      for (const st of STEMS) t.objectStore('blobs').delete(id + '/' + st.key);
+    });
+  }
+};
+
+/* ---------- library ---------- */
+async function renderLibrary() {
+  let songs = [];
+  try { songs = await DB.all(); } catch (e) {}
+  songs.sort((a, b) => b.created - a.created);
+  const list = $('#lib-list');
+  $('#lib-empty').hidden = songs.length > 0;
+  list.innerHTML = songs.map(s => `
+    <div class="song" data-id="${s.id}">
+      <div class="stripes">${STEMS.map((st, i) => `<i style="background:${st.color};height:${[70, 45, 90, 60, 35, 80][i]}%"></i>`).join('')}</div>
+      <div class="meta" data-open><div class="name">${esc(s.title)}</div>
+      <div class="sub">${fmt(s.duration)} · ${mb(s.size || 0)} · ${new Date(s.created).toLocaleDateString()}</div></div>
+      <button class="dots" data-more aria-label="More">⋯</button>
+    </div>`).join('');
+  for (const el of list.querySelectorAll('.song')) {
+    const id = el.dataset.id;
+    el.querySelector('[data-open]').onclick = () => openSong(id);
+    el.querySelector('.stripes').onclick = () => openSong(id);
+    el.querySelector('[data-more]').onclick = () => songMenu(songs.find(s => s.id === id));
+  }
+  try {
+    const est = await navigator.storage.estimate();
+    $('#storage').textContent = 'Using ' + mb(est.usage || 0) + ' on this phone';
+  } catch (e) {}
+}
+function songMenu(song) {
+  sheet(`<h3>${esc(song.title)}</h3>
+    <button class="list-btn" data-open><span class="lbl">Open</span></button>
+    <button class="list-btn" data-ren><span class="lbl">Rename</span></button>
+    <button class="list-btn" data-del><span class="lbl danger">Delete</span></button>`, (s, close) => {
+    $('[data-open]', s).onclick = () => { close(); openSong(song.id); };
+    $('[data-ren]', s).onclick = () => { close(); renameSong(song); };
+    $('[data-del]', s).onclick = () => { close(); sheet(`<h3>Delete “${esc(song.title)}”?</h3><p>Its 6 tracks will be removed from this phone.</p><div class="row"><button class="ghost" data-n>Cancel</button><button class="primary" style="background:var(--danger)" data-y>Delete</button></div>`, (s2, c2) => {
+      $('[data-n]', s2).onclick = c2;
+      $('[data-y]', s2).onclick = async () => { c2(); await DB.del(song.id); renderLibrary(); toast('Deleted'); };
+    }); };
+  });
+}
+function renameSong(song) {
+  sheet(`<h3>Rename</h3><input type="text" id="ren" value="${esc(song.title)}" maxlength="120"><div class="row"><button class="ghost" data-n>Cancel</button><button class="primary" data-y>Save</button></div>`, (s, close) => {
+    $('[data-n]', s).onclick = close;
+    $('[data-y]', s).onclick = async () => { const v = $('#ren', s).value.trim(); if (v) { song.title = v; await DB.put(song); } close(); renderLibrary(); };
+  });
+}
+
+/* ---------- import + split ---------- */
+async function decodeTo44k(ab) {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const oc = new OAC(2, SR, SR);
+  return new Promise((res, rej) => { const p = oc.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
+}
+async function modelCached() {
+  try { const c = await caches.open('isola-model-v1'); return !!(await c.match(location.origin + '/__model__/htdemucs_6s_fp16weights.onnx')); } catch (e) { return false; }
+}
+$('#btn-add').onclick = () => $('#file').click();
+$('#file').onchange = async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  const ld = loading('Reading “' + file.name + '”…');
+  let buf;
+  try { buf = await decodeTo44k(await file.arrayBuffer()); }
+  catch (err) { ld.close(); return errorSheet('Can’t read this file', 'This file could not be opened as audio. Try an MP3, M4A or WAV.'); }
+  ld.close();
+  const dur = buf.length / SR, cached = await modelCached();
+  const title = file.name.replace(/\.[^.]+$/, '');
+  const long = dur > 420;
+  sheet(`<h3>Split “${esc(title)}”?</h3>
+    <p>${fmt(dur)} long. Isola will separate it into 6 tracks. This takes a few minutes on a phone.</p>
+    ${cached ? '' : '<p class="small">First time only: the AI model (about 136 MB) downloads once. Wi-Fi recommended.</p>'}
+    ${long ? '<p class="small" style="color:#ffd34d">Long song: it may take a while, and older phones can run out of memory.</p>' : ''}
+    <div class="row"><button class="ghost" data-n>Cancel</button><button class="primary" data-y>Split now</button></div>`, (s, close) => {
+    $('[data-n]', s).onclick = close;
+    $('[data-y]', s).onclick = () => { close(); splitSong(title, buf); buf = null; };
+  });
+};
+
+let job = null;
+function makeWorker(id, module) {
+  const url = URL.createObjectURL(new Blob([document.getElementById(id).textContent], { type: 'text/javascript' }));
+  return module ? new Worker(url, { type: 'module' }) : new Worker(url);
+}
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    else if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (job && document.visibilityState === 'visible') keepAwake(true); });
+window.addEventListener('beforeunload', e => { if (job) { e.preventDefault(); e.returnValue = ''; } });
+
+async function splitSong(title, buf) {
+  const N = buf.length, duration = N / SR;
+  const L = new Float32Array(buf.getChannelData(0));
+  const R = buf.numberOfChannels > 1 ? new Float32Array(buf.getChannelData(1)) : new Float32Array(L);
+  buf = null;
+  show('v-proc'); $('#proc-title').textContent = title;
+  const setP = (pct, step, detail) => {
+    if (pct != null) { $('#proc-pct').textContent = Math.round(pct) + '%'; $('#proc-bar').style.width = pct + '%'; }
+    if (step != null) $('#proc-step').textContent = step;
+    if (detail != null) $('#proc-detail').textContent = detail;
+  };
+  setP(0, 'Getting ready…', '');
+  keepAwake(true);
+  const sep = makeWorker('w-sep', true), encs = [makeWorker('w-enc'), makeWorker('w-enc')];
+  job = { cancel: false, workers: [sep, ...encs] };
+  const keysFor = [[], []]; STEMS.forEach((s, i) => keysFor[i % 2].push(s.key));
+  const encDone = encs.map(w => new Promise((res, rej) => {
+    w.onmessage = e => { if (e.data.type === 'done') res(e.data.blobs); else if (e.data.type === 'error') rej(new Error(e.data.message)); };
+    w.onerror = e => rej(new Error((e && e.message) || 'The MP3 encoder stopped'));
+  }));
+  encs.forEach((w, i) => w.postMessage({ type: 'start', keys: keysFor[i], kbps: settings.kbps }));
+  const t0 = Date.now(); let engineLabel = '', ep = 'wasm', avgMs = 0, nChunks = 0, total = 0;
+  try {
+    await new Promise((res, rej) => {
+      sep.onerror = e => rej(new Error((e && e.message) || 'The splitter stopped. The phone may have run out of memory.'));
+      sep.onmessage = e => {
+        const m = e.data;
+        if (m.type === 'status') setP(null, m.text, '');
+        else if (m.type === 'download') setP(null, 'Downloading the AI model (first time only)…', mb(m.got) + (m.total ? ' of ' + mb(m.total) : ''));
+        else if (m.type === 'engine') { engineLabel = m.label; ep = m.ep; setP(null, 'Splitting into 6 tracks…', 'Engine: ' + engineLabel); }
+        else if (m.type === 'chunktime') { nChunks++; avgMs += (m.ms - avgMs) / nChunks; }
+        else if (m.type === 'block') {
+          STEMS.forEach((s, i) => {
+            const l = m.rows[s.idx * 2], r = m.rows[s.idx * 2 + 1];
+            encs[i % 2].postMessage({ type: 'pcm', key: s.key, l, r }, [l.buffer, r.buffer]);
+          });
+        }
+        else if (m.type === 'progress') {
+          total = m.total;
+          const left = (m.total - m.done) * avgMs / 1000;
+          setP(m.done / m.total * 97, 'Splitting into 6 tracks…', 'Part ' + m.done + ' of ' + m.total + (m.done < m.total && avgMs ? ' · about ' + (left > 90 ? Math.ceil(left / 60) + ' min' : Math.ceil(left) + ' s') + ' left' : '') + ' · ' + engineLabel);
+        }
+        else if (m.type === 'done') res();
+        else if (m.type === 'error') rej(new Error(m.message));
+      };
+      sep.postMessage({ type: 'run', L, R, engine: settings.engine }, [L.buffer, R.buffer]);
+    });
+    sep.terminate();
+    setP(98, 'Saving tracks…', '');
+    encs.forEach(w => w.postMessage({ type: 'finish' }));
+    const blobs = Object.assign({}, ...(await Promise.all(encDone)));
+    encs.forEach(w => w.terminate());
+    const id = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    let size = 0; for (const k in blobs) size += blobs[k].size;
+    const song = { id, title, duration, size, created: Date.now(), engine: ep, seconds: Math.round((Date.now() - t0) / 1000) };
+    await DB.save(song, blobs);
+    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+    setP(100, 'Done!', '');
+    job = null; keepAwake(false);
+    openSong(id, blobs);
+  } catch (err) {
+    const wasCancel = job && job.cancel;
+    if (job) job.workers.forEach(w => w.terminate());
+    job = null; keepAwake(false);
+    show('v-lib'); renderLibrary();
+    if (!wasCancel) errorSheet('The split didn’t finish', err.message || String(err));
+  }
+}
+$('#btn-cancel').onclick = () => {
+  if (!job) return;
+  job.cancel = true; job.workers.forEach(w => w.terminate());
+  job = null; keepAwake(false); show('v-lib'); renderLibrary(); toast('Cancelled');
+};
+
+/* ---------- audio engine ---------- */
+const E = {
+  ctx: null, master: null, gains: {}, buffers: {}, srcs: [], dur: 0,
+  playing: false, pos: 0, anchorPos: 0, anchorT: 0, rate: 1, semis: 0,
+  loopOn: false, A: null, B: null, stretch: null, fxOn: false, routeQ: Promise.resolve(),
+  ensure() {
+    if (this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    try { this.ctx = new AC({ sampleRate: SR, latencyHint: 'playback' }); } catch (e) { this.ctx = new AC(); }
+    this.master = this.ctx.createGain(); this.master.connect(this.ctx.destination);
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  },
+  load(buffers) {
+    this.stop(); this.buffers = buffers; this.dur = 0;
+    for (const k in this.gains) try { this.gains[k].disconnect(); } catch (e) {}
+    this.gains = {};
+    for (const k in buffers) {
+      this.dur = Math.max(this.dur, buffers[k].duration);
+      const g = this.ctx.createGain(); g.connect(this.master); this.gains[k] = g;
+    }
+    this.pos = 0; this.loopOn = false; this.A = this.B = null;
+  },
+  loopValid() { return this.A != null && this.B != null && this.B - this.A > 0.2; },
+  start(at) {
+    const t = this.ctx.currentTime + 0.05; this.srcs = [];
+    const lp = this.loopOn && this.loopValid();
+    for (const k in this.buffers) {
+      const s = this.ctx.createBufferSource(); s.buffer = this.buffers[k];
+      s.playbackRate.value = this.rate;
+      if (lp) { s.loop = true; s.loopStart = this.A; s.loopEnd = this.B; }
+      s.connect(this.gains[k]); s.start(t, at); this.srcs.push(s);
+    }
+    this.anchorPos = at; this.anchorT = t;
+  },
+  stop() { for (const s of this.srcs) { try { s.stop(); } catch (e) {} try { s.disconnect(); } catch (e) {} } this.srcs = []; },
+  now() {
+    if (!this.playing) return this.pos;
+    let p = this.anchorPos + Math.max(0, this.ctx.currentTime - this.anchorT) * this.rate;
+    if (this.loopOn && this.loopValid() && this.anchorPos < this.B && p >= this.B) p = this.A + ((p - this.B) % (this.B - this.A));
+    return p;
+  },
+  startPos(p) {
+    if (p >= this.dur - 0.05) p = 0;
+    if (this.loopOn && this.loopValid() && (p < this.A || p >= this.B)) p = this.A;
+    return p;
+  },
+  play() {
+    if (this.playing || !this.dur) return;
+    this.ctx.resume();
+    this.start(this.startPos(this.pos)); this.playing = true;
+  },
+  pause() { if (!this.playing) return; this.pos = Math.min(this.now(), this.dur); this.stop(); this.playing = false; },
+  seek(p) {
+    p = clamp(p, 0, this.dur);
+    if (this.playing) { this.stop(); this.start(this.loopOn && this.loopValid() && (p < this.A || p >= this.B) ? this.A : p); }
+    else this.pos = p;
+  },
+  restartHere() { if (this.playing) { const p = this.now(); this.stop(); this.start(this.startPos(p)); } },
+  setGain(k, v) { const g = this.gains[k]; if (g) g.gain.setTargetAtTime(v, this.ctx.currentTime, 0.015); },
+  setRate(r) {
+    if (this.playing) {
+      const p = this.now(), t = this.ctx.currentTime;
+      this.anchorPos = p; this.anchorT = t;
+      for (const s of this.srcs) s.playbackRate.setValueAtTime(r, t);
+    }
+    this.rate = r; this.route();
+  },
+  setSemis(n) { this.semis = n; this.route(); },
+  route() {
+    this.routeQ = this.routeQ.then(async () => {
+      const need = this.rate !== 1 || this.semis !== 0;
+      if (need && !this.stretch) {
+        try {
+          const mod = await import(SS_URL);
+          this.stretch = await mod.default(this.ctx);
+          this.stretch.connect(this.ctx.destination);
+        } catch (e) { toast('Pitch correction could not load. Speed will change the pitch.'); this.stretch = false; }
+      }
+      try { this.master.disconnect(); } catch (e) {}
+      if (need && this.stretch) {
+        const semis = -12 * Math.log2(this.rate) + this.semis;
+        if (!this.fxOn) { this.stretch.start(); this.fxOn = true; }
+        this.stretch.schedule({ semitones: semis });
+        this.master.connect(this.stretch);
+      } else {
+        if (this.stretch && this.fxOn) { this.stretch.stop(); this.fxOn = false; }
+        this.master.connect(this.ctx.destination);
+      }
+    }).catch(() => {});
+    return this.routeQ;
+  }
+};
+
+/* ---------- player ---------- */
+let P = null; // current song state
+const state = {}; // per-stem {on, solo, vol}
+function gainFor(k) {
+  const anySolo = STEMS.some(s => state[s.key].solo);
+  const st = state[k];
+  return (anySolo ? st.solo : st.on) ? st.vol : 0;
+}
+function applyGains() {
+  for (const s of STEMS) {
+    E.setGain(s.key, gainFor(s.key));
+    const el = $('.track[data-k="' + s.key + '"]');
+    if (!el) continue;
+    el.classList.toggle('muted', !state[s.key].on);
+    el.classList.toggle('off', gainFor(s.key) === 0);
+    $('.solo', el).classList.toggle('on', state[s.key].solo);
+  }
+}
+function peaks(buf, n) {
+  const a = buf.getChannelData(0), b = buf.numberOfChannels > 1 ? buf.getChannelData(1) : a;
+  const out = new Float32Array(n), step = Math.max(1, Math.floor(a.length / n));
+  let gmax = 0;
+  for (let i = 0; i < n; i++) {
+    let m = 0; const s = i * step, e = Math.min(a.length, s + step);
+    for (let j = s; j < e; j += 16) { const v = Math.max(Math.abs(a[j]), Math.abs(b[j])); if (v > m) m = v; }
+    out[i] = m; if (m > gmax) gmax = m;
+  }
+  return { p: out, max: gmax };
+}
+function drawWave(canvas, pk, color) {
+  const dpr = Math.min(3, window.devicePixelRatio || 1), w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+  const g = canvas.getContext('2d'); g.scale(dpr, dpr); g.clearRect(0, 0, w, h);
+  g.fillStyle = color;
+  const n = pk.p.length, bw = w / n, norm = 1 / Math.max(0.05, Math.max(pk.max, 0.0001));
+  for (let i = 0; i < n; i++) {
+    const v = Math.min(1, pk.p[i] * norm), bh = Math.max(1, v * (h - 6));
+    g.fillRect(i * bw, (h - bh) / 2, Math.max(1, bw - 0.6), bh);
+  }
+}
+
+async function openSong(id, preBlobs) {
+  E.ensure();
+  const ld = loading('Loading tracks…');
+  try {
+    const song = await DB.get(id);
+    if (!song) throw new Error('Song not found');
+    const blobs = preBlobs || await DB.blobs(id);
+    E.pause(); E.load({});
+    const buffers = {};
+    for (let i = 0; i < STEMS.length; i++) {
+      const k = STEMS[i].key;
+      ld.set('Loading tracks… ' + (i + 1) + '/6');
+      const ab = await blobs[k].arrayBuffer();
+      buffers[k] = await new Promise((res, rej) => { const p = E.ctx.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
+    }
+    E.load(buffers);
+    E.rate = 1; E.semis = 0; E.route();
+    P = { song, blobs, pk: {} };
+    for (const s of STEMS) { state[s.key] = { on: true, solo: false, vol: 1 }; P.pk[s.key] = peaks(buffers[s.key], 300); }
+    $('#pl-title').textContent = song.title;
+    renderTracks();
+    show('v-play');
+    requestAnimationFrame(() => { for (const s of STEMS) drawWave($('.track[data-k="' + s.key + '"] canvas'), P.pk[s.key], s.color); });
+    updateChips(); applyGains();
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: song.title, artist: 'Isola' });
+        navigator.mediaSession.setActionHandler('play', () => togglePlay(true));
+        navigator.mediaSession.setActionHandler('pause', () => togglePlay(false));
+      } catch (e) {}
+    }
+    ld.close();
+  } catch (err) {
+    ld.close(); show('v-lib'); renderLibrary();
+    errorSheet('Couldn’t open the song', err.message || String(err));
+  }
+}
+
+function renderTracks() {
+  $('#tracks').innerHTML = STEMS.map(s => {
+    const quiet = P.pk[s.key].max < 0.02;
+    return `<div class="track" data-k="${s.key}" style="--c:${s.color}">
+      <div class="trow">
+        <button class="toggle" data-t><span class="box"></span><span class="tname">${s.name}${quiet ? '<span class="tnote">almost silent</span>' : ''}</span></button>
+        <button class="tb solo" data-s>SOLO</button>
+      </div>
+      <div class="wave" data-w><canvas></canvas><div class="lb" hidden></div><div class="ph"></div></div>
+      <div class="volrow">Vol<input type="range" class="vol" min="0" max="150" value="100" data-v><span data-vl>100%</span></div>
+    </div>`;
+  }).join('');
+  for (const el of document.querySelectorAll('.track')) {
+    const k = el.dataset.k;
+    $('[data-t]', el).onclick = () => { state[k].on = !state[k].on; if (!state[k].on) state[k].solo = false; applyGains(); };
+    $('[data-s]', el).onclick = () => { state[k].solo = !state[k].solo; if (state[k].solo) state[k].on = true; applyGains(); };
+    const v = $('[data-v]', el);
+    v.oninput = () => { state[k].vol = v.value / 100; $('[data-vl]', el).textContent = v.value + '%'; applyGains(); };
+    const w = $('[data-w]', el);
+    w.addEventListener('pointerdown', e => {
+      const r = w.getBoundingClientRect();
+      E.seek(clamp((e.clientX - r.left) / r.width, 0, 1) * E.dur);
+    });
+  }
+}
+
+let dragging = false;
+const seek = $('#seek');
+seek.addEventListener('input', () => { dragging = true; $('#t-cur').textContent = fmt(seek.value / 1000 * E.dur); });
+seek.addEventListener('change', () => { E.seek(seek.value / 1000 * E.dur); dragging = false; });
+function togglePlay(force) {
+  const want = force == null ? !E.playing : force;
+  if (want) E.play(); else E.pause();
+  $('#btn-play').textContent = E.playing ? '❚❚' : '▶';
+  $('#btn-play').setAttribute('aria-label', E.playing ? 'Pause' : 'Play');
+}
+$('#btn-play').onclick = () => togglePlay();
+$('#btn-rw').onclick = () => E.seek(E.now() - 5);
+$('#btn-ff').onclick = () => E.seek(E.now() + 5);
+$('#btn-back').onclick = () => { E.pause(); togglePlay(false); E.load({}); P = null; show('v-lib'); renderLibrary(); };
+
+function tick() {
+  if (P && !$('#v-play').hidden) {
+    let p = E.now();
+    if (E.playing && !(E.loopOn && E.loopValid()) && p >= E.dur) { E.pause(); E.pos = E.dur; togglePlay(false); p = E.dur; }
+    const f = E.dur ? p / E.dur : 0;
+    if (!dragging) { seek.value = Math.round(f * 1000); $('#t-cur').textContent = fmt(p); }
+    $('#t-dur').textContent = fmt(E.dur);
+    for (const ph of document.querySelectorAll('.wave .ph')) ph.style.left = (f * 100) + '%';
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+let rzT = null;
+window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (P) for (const s of STEMS) drawWave($('.track[data-k="' + s.key + '"] canvas'), P.pk[s.key], s.color); }, 200); });
+
+/* loop + practice chips */
+function updateChips() {
+  $('#chip-speed').textContent = 'Speed ' + Math.round(E.rate * 100) + '%';
+  $('#chip-speed').classList.toggle('on', E.rate !== 1);
+  $('#chip-key').textContent = 'Key ' + (E.semis > 0 ? '+' : '') + E.semis;
+  $('#chip-key').classList.toggle('on', E.semis !== 0);
+  $('#chip-a').textContent = E.A != null ? 'A ' + fmt(E.A) : 'A';
+  $('#chip-b').textContent = E.B != null ? 'B ' + fmt(E.B) : 'B';
+  $('#chip-a').classList.toggle('set', E.A != null);
+  $('#chip-b').classList.toggle('set', E.B != null);
+  $('#chip-loop').classList.toggle('on', E.loopOn && E.loopValid());
+  $('#chip-clear').hidden = E.A == null && E.B == null;
+  const band = $('#loopband'), vis = !!(E.loopValid() && E.dur);
+  band.hidden = !vis;
+  for (const lb of document.querySelectorAll('.wave .lb')) lb.hidden = !vis;
+  if (vis) {
+    const l = E.A / E.dur * 100, w = (E.B - E.A) / E.dur * 100;
+    band.style.left = l + '%'; band.style.width = w + '%';
+    for (const lb of document.querySelectorAll('.wave .lb')) { lb.style.left = l + '%'; lb.style.width = w + '%'; }
+  }
+}
+$('#chip-a').onclick = () => {
+  E.A = Math.round(E.now() * 10) / 10;
+  if (E.B != null && E.B <= E.A + 0.2) E.B = null;
+  updateChips(); toast('Loop start set at ' + fmt(E.A) + '. Now set B.');
+};
+$('#chip-b').onclick = () => {
+  const b = Math.round(E.now() * 10) / 10;
+  if (E.A == null) E.A = 0;
+  if (b <= E.A + 0.2) return toast('B must be after A');
+  E.B = b; E.loopOn = true; E.restartHere(); updateChips(); toast('Looping ' + fmt(E.A) + ' – ' + fmt(E.B));
+};
+$('#chip-loop').onclick = () => {
+  if (!E.loopValid()) return toast('Tap A at the start and B at the end of the part you want to loop');
+  E.loopOn = !E.loopOn; E.restartHere(); updateChips();
+};
+$('#chip-clear').onclick = () => { E.loopOn = false; E.A = E.B = null; E.restartHere(); updateChips(); };
+$('#chip-all').onclick = () => { for (const s of STEMS) { state[s.key].on = true; state[s.key].solo = false; } applyGains(); };
+
+$('#chip-speed').onclick = () => {
+  const presets = [50, 60, 75, 90, 100];
+  sheet(`<h3>Speed</h3><p class="small">Slows down without changing the pitch. Great for learning a part.</p>
+    <div class="big-val" id="sv">${Math.round(E.rate * 100)}%</div>
+    <input type="range" id="sr" min="50" max="125" step="5" value="${Math.round(E.rate * 100)}">
+    <div class="presets">${presets.map(p => `<button data-p="${p}">${p}%</button>`).join('')}</div>
+    <div class="row"><button class="primary" data-x>Done</button></div>`, (s, close) => {
+    const r = $('#sr', s);
+    const mark = () => { $('#sv', s).textContent = r.value + '%'; for (const b of s.querySelectorAll('[data-p]')) b.classList.toggle('on', b.dataset.p === r.value); };
+    const apply = () => { E.setRate(r.value / 100); updateChips(); mark(); };
+    r.oninput = mark; r.onchange = apply;
+    for (const b of s.querySelectorAll('[data-p]')) b.onclick = () => { r.value = b.dataset.p; apply(); };
+    mark(); $('[data-x]', s).onclick = close;
+  });
+};
+$('#chip-key').onclick = () => {
+  sheet(`<h3>Key (transpose)</h3><p class="small">Shift every track up or down in semitones, e.g. to match your tuning or voice.</p>
+    <div class="big-val" id="kv"></div>
+    <input type="range" id="kr" min="-6" max="6" step="1" value="${E.semis}">
+    <div class="row"><button class="ghost" data-z>Reset</button><button class="primary" data-x>Done</button></div>`, (s, close) => {
+    const r = $('#kr', s);
+    const mark = () => $('#kv', s).textContent = (r.value > 0 ? '+' : '') + r.value;
+    r.oninput = mark; r.onchange = () => { E.setSemis(+r.value); updateChips(); };
+    $('[data-z]', s).onclick = () => { r.value = 0; mark(); E.setSemis(0); updateChips(); };
+    mark(); $('[data-x]', s).onclick = close;
+  });
+};
+
+/* ---------- export ---------- */
+async function shareFiles(files) {
+  if (navigator.canShare && navigator.share) {
+    try {
+      if (navigator.canShare({ files })) { await navigator.share({ files }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+  }
+  for (const f of files) {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+    await new Promise(r => setTimeout(r, 400));
+  }
+}
+const safeName = s => s.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 80);
+const stemFile = k => new File([P.blobs[k]], safeName(P.song.title) + ' - ' + STEMS.find(s => s.key === k).name.replace(' / ', '-') + '.mp3', { type: 'audio/mpeg' });
+
+$('#btn-export').onclick = () => {
+  if (!P) return;
+  sheet(`<h3>Export</h3><p class="small">Save tracks as MP3 files (on iPhone choose “Save to Files”).</p>
+    ${STEMS.map(s => `<button class="list-btn" data-k="${s.key}"><span class="dot" style="background:${s.color}"></span><span class="lbl">${s.name}</span><span class="muted small">${mb(P.blobs[s.key].size)}</span><span class="act">Save</span></button>`).join('')}
+    <button class="list-btn" data-all><span class="dot" style="background:#fff"></span><span class="lbl">All 6 tracks</span><span class="act">Save</span></button>
+    <button class="list-btn" data-mix><span class="dot" style="background:var(--accent)"></span><span class="lbl">My mix<br><span class="small muted">What you hear now: muted tracks removed, volumes applied. Normal speed.</span></span><span class="act">Make</span></button>`, (s, close) => {
+    for (const b of s.querySelectorAll('[data-k]')) b.onclick = () => shareFiles([stemFile(b.dataset.k)]);
+    $('[data-all]', s).onclick = () => shareFiles(STEMS.map(x => stemFile(x.key)));
+    $('[data-mix]', s).onclick = () => { close(); makeMix(); };
+  });
+};
+async function makeMix() {
+  const ld = loading('Mixing…');
+  let w;
+  try {
+    const len = Math.ceil(E.dur * SR);
+    const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const oc = new OAC(2, len, SR);
+    let any = false;
+    for (const s of STEMS) {
+      const g = gainFor(s.key); if (!g) continue; any = true;
+      const src = oc.createBufferSource(); src.buffer = E.buffers[s.key];
+      const gn = oc.createGain(); gn.gain.value = g; src.connect(gn); gn.connect(oc.destination); src.start(0);
+    }
+    if (!any) { ld.close(); return toast('All tracks are muted'); }
+    const out = await oc.startRendering();
+    ld.set('Making the MP3…');
+    w = makeWorker('w-enc');
+    const blob = await new Promise((res, rej) => {
+      w.onmessage = e => { if (e.data.type === 'done') res(e.data.blobs.mix); else if (e.data.type === 'error') rej(new Error(e.data.message)); };
+      w.onerror = () => rej(new Error('The MP3 encoder stopped'));
+      w.postMessage({ type: 'start', keys: ['mix'], kbps: settings.kbps });
+      const l = new Float32Array(out.getChannelData(0)), r = new Float32Array(out.getChannelData(1));
+      w.postMessage({ type: 'pcm', key: 'mix', l, r }, [l.buffer, r.buffer]);
+      w.postMessage({ type: 'finish' });
+    });
+    w.terminate(); ld.close();
+    const off = STEMS.filter(s => !gainFor(s.key)).map(s => s.name.split(' ')[0].toLowerCase());
+    const name = safeName(P.song.title) + (off.length ? ' (no ' + off.join(', ') + ')' : ' (mix)') + '.mp3';
+    const file = new File([blob], name, { type: 'audio/mpeg' });
+    // a fresh tap keeps the phone's share sheet happy
+    sheet(`<h3>Your mix is ready</h3><p class="small">${esc(name)} · ${mb(blob.size)}</p><div class="row"><button class="ghost" data-n>Close</button><button class="primary" data-y>Save</button></div>`, (s, close) => {
+      $('[data-n]', s).onclick = close;
+      $('[data-y]', s).onclick = () => { shareFiles([file]); close(); };
+    });
+  } catch (err) {
+    if (w) w.terminate(); ld.close(); errorSheet('Couldn’t make the mix', err.message || String(err));
+  }
+}
+
+/* ---------- settings ---------- */
+$('#btn-settings').onclick = async () => {
+  const cached = await modelCached();
+  let usage = '';
+  try { const est = await navigator.storage.estimate(); usage = mb(est.usage || 0) + ' used'; } catch (e) {}
+  sheet(`<h3>Settings</h3>
+    <label class="f">Splitting engine</label>
+    <select id="s-eng"><option value="auto">Automatic (graphics chip when available)</option><option value="cpu">Processor only (more compatible)</option></select>
+    <label class="f">MP3 quality</label>
+    <select id="s-q"><option value="128">Smaller files (128 kbps)</option><option value="192">Standard (192 kbps)</option><option value="256">High (256 kbps)</option></select>
+    <label class="f">Storage</label>
+    <p class="small" style="margin:0">${usage}${cached ? ' · AI model saved on this phone (≈136 MB)' : ' · AI model not downloaded yet'}</p>
+    ${cached ? '<button class="ghost" id="s-rm" style="width:100%;margin-top:10px">Remove the AI model</button>' : ''}
+    <p class="small muted" style="margin-top:18px">Isola ${VERSION}. Separation uses the open-source HT-Demucs 6-source model by Meta AI (MIT licence), running on this phone. Isolate only music you have the right to use.</p>
+    <div class="row"><button class="primary" data-x>Done</button></div>`, (s, close) => {
+    $('#s-eng', s).value = settings.engine; $('#s-q', s).value = String(settings.kbps);
+    $('#s-eng', s).onchange = e => { settings.engine = e.target.value; saveSettings(); };
+    $('#s-q', s).onchange = e => { settings.kbps = +e.target.value; saveSettings(); };
+    const rm = $('#s-rm', s);
+    if (rm) rm.onclick = async () => { try { await caches.delete('isola-model-v1'); } catch (e) {} close(); toast('AI model removed. It will download again next time.'); };
+    $('[data-x]', s).onclick = close;
+  });
+};
+
+/* ---------- service worker (offline + multi-threading) ---------- */
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register('sw.js').then(() => {
+    if (!window.crossOriginIsolated && !sessionStorage.getItem('isola-coi')) {
+      sessionStorage.setItem('isola-coi', '1');
+      if (navigator.serviceWorker.controller) location.reload();
+      else navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
+    }
+  }).catch(() => {});
+}
+renderLibrary();
+</script>
+</body>
+</html>
