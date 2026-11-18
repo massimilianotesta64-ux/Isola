@@ -189,7 +189,7 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-w
 <!-- ================= APP ================= -->
 <script>
 'use strict';
-const VERSION = '1.0.2';
+const VERSION = '1.1.0';
 const SR = 44100;
 const SS_URL = new URL('lib/SignalsmithStretch.mjs', location.href).href;
 // model output order: 0 drums, 1 bass, 2 other, 3 vocals, 4 guitar, 5 piano
@@ -208,7 +208,7 @@ const mb = b => (b / 1048576).toFixed(b > 104857600 ? 0 : 1) + ' MB';
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 /* ---------- settings ---------- */
-const settings = Object.assign({ engine: 'auto', kbps: 192 }, (() => { try { return JSON.parse(localStorage.getItem('isola-settings')) || {}; } catch (e) { return {}; } })());
+const settings = Object.assign({ model: 'auto', kbps: 192 }, (() => { try { return JSON.parse(localStorage.getItem('isola-settings')) || {}; } catch (e) { return {}; } })());
 const saveSettings = () => { try { localStorage.setItem('isola-settings', JSON.stringify(settings)); } catch (e) {} };
 
 /* ---------- UI helpers ---------- */
@@ -330,8 +330,11 @@ async function decodeTo44k(ab) {
   const oc = new OAC(2, SR, SR);
   return new Promise((res, rej) => { const p = oc.decodeAudioData(ab, res, rej); if (p && p.then) p.then(res, rej); });
 }
+const MODEL_FILES = { light: 'demucs_htdemucs_6s_s39_fp16w_ca.onnx', full: 'demucs_htdemucs_6s_s78_fp16w_ca.onnx' };
+const isPhone = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+const modelChoice = () => settings.model === 'light' || settings.model === 'full' ? settings.model : (isPhone() ? 'light' : 'full');
 async function modelCached() {
-  try { const c = await caches.open('isola-model-v1'); return !!(await c.match(location.origin + '/__model__/htdemucs_6s_fp16weights.onnx')); } catch (e) { return false; }
+  try { const c = await caches.open('isola-model-v2'); return !!(await c.match(location.origin + '/__model__/' + MODEL_FILES[modelChoice()])); } catch (e) { return false; }
 }
 $('#btn-add').onclick = () => $('#file').click();
 $('#file').onchange = async e => {
@@ -347,7 +350,7 @@ $('#file').onchange = async e => {
   const long = dur > 420;
   sheet(`<h3>Split “${esc(title)}”?</h3>
     <p>${fmt(dur)} long. Isola will separate it into 6 tracks. This takes a few minutes on a phone.</p>
-    ${cached ? '' : '<p class="small">First time only: the AI model (about 136 MB) downloads once. Wi-Fi recommended.</p>'}
+    ${cached ? '' : '<p class="small">First time only: the AI model (about 57 MB) downloads once. Wi-Fi recommended.</p>'}
     ${long ? '<p class="small" style="color:#ffd34d">Long song: it may take a while, and older phones can run out of memory.</p>' : ''}
     <div class="row"><button class="ghost" data-n>Cancel</button><button class="primary" data-y>Split now</button></div>`, (s, close) => {
     $('[data-n]', s).onclick = close;
@@ -413,7 +416,7 @@ async function splitSong(title, buf) {
         else if (m.type === 'done') res();
         else if (m.type === 'error') rej(new Error(m.message));
       };
-      sep.postMessage({ type: 'run', L, R, engine: settings.engine }, [L.buffer, R.buffer]);
+      sep.postMessage({ type: 'run', L, R, model: modelChoice() }, [L.buffer, R.buffer]);
     });
     sep.terminate();
     setP(98, 'Saving tracks…', '');
@@ -810,17 +813,20 @@ $('#btn-settings').onclick = async () => {
   let usage = '';
   try { const est = await navigator.storage.estimate(); usage = mb(est.usage || 0) + ' used'; } catch (e) {}
   sheet(`<h3>Settings</h3>
+    <label class="f">Splitting model</label>
+    <select id="s-m"><option value="auto">Automatic (light on phones, full on computers)</option><option value="light">Light: less memory, best for phones</option><option value="full">Full: a little better, needs more memory</option></select>
     <label class="f">MP3 quality</label>
     <select id="s-q"><option value="128">Smaller files (128 kbps)</option><option value="192">Standard (192 kbps)</option><option value="256">High (256 kbps)</option></select>
     <label class="f">Storage</label>
-    <p class="small" style="margin:0">${usage}${cached ? ' · AI model saved on this phone (≈136 MB)' : ' · AI model not downloaded yet'}</p>
+    <p class="small" style="margin:0">${usage}${cached ? ' · AI model saved on this device' : ' · AI model not downloaded yet'}</p>
     ${cached ? '<button class="ghost" id="s-rm" style="width:100%;margin-top:10px">Remove the AI model</button>' : ''}
-    <p class="small muted" style="margin-top:18px">Isola ${VERSION}. Separation uses the open-source HT-Demucs 6-source model by Meta AI (MIT licence), running on this phone. Isolate only music you have the right to use.</p>
+    <p class="small muted" style="margin-top:18px">Isola ${VERSION}. Separation uses Meta AI’s open-source HT-Demucs 6-source model (MIT licence), in the browser version published by AudioWeb, running on this device. Isolate only music you have the right to use.</p>
     <div class="row"><button class="primary" data-x>Done</button></div>`, (s, close) => {
-    $('#s-q', s).value = String(settings.kbps);
+    $('#s-q', s).value = String(settings.kbps); $('#s-m', s).value = settings.model in MODEL_FILES ? settings.model : 'auto';
+    $('#s-m', s).onchange = e => { settings.model = e.target.value; saveSettings(); };
     $('#s-q', s).onchange = e => { settings.kbps = +e.target.value; saveSettings(); };
     const rm = $('#s-rm', s);
-    if (rm) rm.onclick = async () => { try { await caches.delete('isola-model-v1'); } catch (e) {} close(); toast('AI model removed. It will download again next time.'); };
+    if (rm) rm.onclick = async () => { try { await caches.delete('isola-model-v1'); await caches.delete('isola-model-v2'); } catch (e) {} close(); toast('AI model removed. It will download again next time.'); };
     $('[data-x]', s).onclick = close;
   });
 };

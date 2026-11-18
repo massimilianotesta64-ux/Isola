@@ -1,16 +1,18 @@
-import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.webgpu.min.mjs';
+import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.wasm.min.mjs';
+import { runModel } from './dsp.js';
+
 const CDN = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
-const MODEL_URLS = [
-  'https://huggingface.co/StemSplitio/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx',
-  'https://huggingface.co/adowu/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx'
-];
-const CACHE_NAME = 'isola-model-v1';
-const CACHE_KEY = self.location.origin + '/__model__/htdemucs_6s_fp16weights.onnx';
-const SEG = 343980;
+// HT-Demucs 6-source (Meta, MIT) exported for browsers by AudioWeb: fp16 weights, chunked attention.
+const MODELS = {
+  light: { seg: 171990, file: 'demucs_htdemucs_6s_s39_fp16w_ca.onnx', mb: 57 },
+  full:  { seg: 343980, file: 'demucs_htdemucs_6s_s78_fp16w_ca.onnx', mb: 55 }
+};
+const BASE = 'https://huggingface.co/Andremi/audioweb-models/resolve/main/';
+const CACHE_NAME = 'isola-model-v2';
 const post = (m, t) => self.postMessage(m, t || []);
 
 // ---- shared overlap-add core (also unit-tested) ----
-async function separate(L, R, runChunk, emit, progress) {
+export async function separate(L, R, SEG, runChunk, emit, progress) {
   const N = L.length;
   const OVERLAP = Math.floor(SEG / 4), STRIDE = SEG - OVERLAP, ROWS = 12;
   // global normalisation, as in the official Demucs pipeline
@@ -58,75 +60,37 @@ async function separate(L, R, runChunk, emit, progress) {
   }
 }
 
-async function getModel() {
+async function getModel(m) {
+  const key = self.location.origin + '/__model__/' + m.file;
   let cache = null;
-  try { cache = await caches.open(CACHE_NAME); } catch (e) {}
+  try {
+    cache = await caches.open(CACHE_NAME);
+    caches.delete('isola-model-v1').catch(() => {}); // old, browser-incompatible model
+  } catch (e) {}
   if (cache) {
     try {
-      const hit = await cache.match(CACHE_KEY);
+      const hit = await cache.match(key);
       if (hit) { post({ type: 'status', text: 'Loading the AI model…' }); return new Uint8Array(await hit.arrayBuffer()); }
     } catch (e) {}
   }
-  let lastErr = null;
-  for (const url of MODEL_URLS) {
-    try {
-      post({ type: 'status', text: 'Downloading the AI model (first time only)…' });
-      const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const total = +res.headers.get('content-length') || 0;
-      const reader = res.body.getReader();
-      let buf = total ? new Uint8Array(total) : null, parts = [], got = 0, t0 = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (buf && got + value.length <= total) buf.set(value, got);
-        else { if (buf) { parts.push(buf.slice(0, got)); buf = null; } parts.push(value); }
-        got += value.length;
-        const now = Date.now();
-        if (now - t0 > 250) { t0 = now; post({ type: 'download', got, total }); }
-      }
-      let bytes;
-      if (buf && got === total) bytes = buf;
-      else {
-        if (buf) parts.unshift(buf.slice(0, got));
-        bytes = new Uint8Array(got); let o = 0;
-        for (const p of parts) { bytes.set(p, o); o += p.length; }
-      }
-      if (bytes.length < 50e6) throw new Error('Model download looks incomplete');
-      if (cache) { try { await cache.put(CACHE_KEY, new Response(bytes, { headers: { 'content-type': 'application/octet-stream' } })); } catch (e) {} }
-      return bytes;
-    } catch (e) { lastErr = e; }
+  post({ type: 'status', text: 'Downloading the AI model (first time only)…' });
+  const res = await fetch(BASE + m.file, { mode: 'cors', credentials: 'omit' });
+  if (!res.ok) throw new Error('Could not download the AI model (HTTP ' + res.status + '). Check your internet connection.');
+  const total = +res.headers.get('content-length') || 0;
+  const reader = res.body.getReader();
+  const parts = []; let got = 0, t0 = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value); got += value.length;
+    const now = Date.now();
+    if (now - t0 > 250) { t0 = now; post({ type: 'download', got, total }); }
   }
-  throw new Error('Could not download the AI model. Check your internet connection. (' + (lastErr && lastErr.message) + ')');
-}
-
-async function makeSession(bytes, ep) {
-  const opts = ep === 'webgpu'
-    ? { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' }
-    : { executionProviders: ['wasm'], graphOptimizationLevel: 'all', enableCpuMemArena: false, enableMemPattern: false };
-  return ort.InferenceSession.create(bytes, opts);
-}
-
-async function runWith(session, input) {
-  const feeds = {};
-  feeds[session.inputNames[0]] = new ort.Tensor('float32', input, [1, 2, SEG]);
-  const res = await session.run(feeds);
-  const t = res[session.outputNames[0]];
-  let d = t.data;
-  if (t.location && t.location !== 'cpu') d = await t.getData(true);
-  return d;
-}
-
-function looksValid(input, out) {
-  // the six stems should add up (roughly) to the input mix
-  let e = 0, s = 0;
-  for (let c = 0; c < 2; c++) for (let i = 0; i < SEG; i += 7) {
-    let y = 0;
-    for (let st = 0; st < 6; st++) y += out[(st * 2 + c) * SEG + i];
-    if (!Number.isFinite(y)) return false;
-    const x = input[c * SEG + i]; e += (y - x) * (y - x); s += x * x;
-  }
-  return s < 1e-6 || e / s < 0.5;
+  const bytes = new Uint8Array(got); let o = 0;
+  for (const p of parts) { bytes.set(p, o); o += p.length; }
+  if (bytes.length < 40e6) throw new Error('The AI model download looks incomplete. Please try again.');
+  if (cache) { try { await cache.put(key, new Response(bytes, { headers: { 'content-type': 'application/octet-stream' } })); } catch (e) {} }
+  return bytes;
 }
 
 self.onmessage = async (ev) => {
@@ -137,49 +101,31 @@ self.onmessage = async (ev) => {
     ort.env.wasm.wasmPaths = CDN;
     const cores = (self.navigator && navigator.hardwareConcurrency) || 2;
     ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, Math.min(4, cores - 1)) : 1;
+    const model = MODELS[m.model] || MODELS.light;
     stage = 'loading the AI model';
-    const bytes = await getModel();
+    let bytes = await getModel(model);
     stage = 'starting the splitter';
     post({ type: 'status', text: 'Starting the splitter…' });
-    let session = null, ep = 'wasm';
-    // The 6-stem model contains an op the WebGPU backend can't run, and a failed
-    // WebGPU attempt can crash the whole engine, so only the processor route is used.
-    if (false) {
-      try {
-        const adapter = await navigator.gpu.requestAdapter();
-        if (adapter) { session = await makeSession(bytes, 'webgpu'); ep = 'webgpu'; }
-      } catch (e) { session = null; }
-    }
-    if (!session) { session = await makeSession(bytes, 'wasm'); ep = 'wasm'; }
-    const engineLabel = () => ep === 'webgpu' ? 'Graphics chip (WebGPU)' : ('Processor · ' + ort.env.wasm.numThreads + (ort.env.wasm.numThreads > 1 ? ' threads' : ' thread'));
-    post({ type: 'engine', ep, label: engineLabel() });
-    let modelBytes = bytes;
+    const session = await ort.InferenceSession.create(bytes, {
+      executionProviders: ['wasm'], graphOptimizationLevel: 'all', enableCpuMemArena: false, enableMemPattern: false
+    });
+    bytes = null;
+    const th = ort.env.wasm.numThreads;
+    post({ type: 'engine', ep: 'wasm', label: (m.model === 'full' ? 'Full model' : 'Light model') + ' · ' + th + (th > 1 ? ' threads' : ' thread') });
     stage = 'splitting';
-    const runChunk = async (input, k) => {
+    const tensor = (t, d, s) => new ort.Tensor(t, d, s);
+    await separate(m.L, m.R, model.seg, async (input) => {
       const t = performance.now();
-      let out;
-      try { out = await runWith(session, input); }
-      catch (e) {
-        if (ep !== 'webgpu') throw e;
-        out = null;
-      }
-      if (k === 0 && ep === 'webgpu' && (!out || !looksValid(input, out))) {
-        try { await session.release(); } catch (e) {}
-        session = await makeSession(modelBytes, 'wasm'); ep = 'wasm';
-        post({ type: 'engine', ep, label: engineLabel() });
-        out = await runWith(session, input);
-      }
-      if (k === 0) modelBytes = null;
+      const out = await runModel(session, input, model.seg, tensor);
       post({ type: 'chunktime', ms: performance.now() - t });
       return out;
-    };
-    await separate(m.L, m.R, runChunk,
+    },
       (rows, k) => post({ type: 'block', k, rows }, rows.map(r => r.buffer)),
       (done, total) => post({ type: 'progress', done, total }));
     try { await session.release(); } catch (e) {}
-    post({ type: 'done', ep });
+    post({ type: 'done', ep: 'wasm' });
   } catch (e) {
     const msg = (e && e.message) || String(e);
-    post({ type: 'error', message: 'Error while ' + (typeof stage === 'string' ? stage : 'starting') + ': ' + msg + ' [threads: ' + ort.env.wasm.numThreads + ', isolated: ' + self.crossOriginIsolated + ']' });
+    post({ type: 'error', message: 'Error while ' + stage + ': ' + msg });
   }
 };
