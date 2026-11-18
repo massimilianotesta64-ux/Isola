@@ -1,0 +1,37 @@
+name: diagnostics
+on:
+  push:
+    branches: [diagnostics]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Install
+        run: |
+          cd diag
+          npm init -y >/dev/null
+          npm i onnxruntime-web@1.23.2 onnxruntime-node@1.23.2 playwright@1.48.2 >/dev/null
+          npx playwright install --with-deps chromium >/dev/null
+      - name: Download model
+        run: |
+          curl -sSL -o diag/model.onnx https://huggingface.co/StemSplitio/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx
+          ls -la diag/model.onnx
+      - name: ORT node test
+        continue-on-error: true
+        run: cd diag && node --max-old-space-size=6000 ort-test.mjs 2>&1 | tee out-ort.txt
+      - name: Browser test on live site
+        continue-on-error: true
+        run: cd diag && timeout 1500 node browser-test.mjs 2>&1 | tee out-browser.txt
+      - name: Save results
+        run: |
+          cd diag && rm -rf node_modules package*.json model.onnx
+          git config user.name "isola-diagnostics"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A . && git commit -m "diagnostic results" && git push || true
