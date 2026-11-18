@@ -184,240 +184,14 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-w
   </div>
 </section>
 
-<!-- ================= SPLITTER WORKER (module) ================= -->
-<script type="text/plain" id="w-sep">
-import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/ort.webgpu.min.mjs';
-const CDN = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.2/dist/';
-const MODEL_URLS = [
-  'https://huggingface.co/StemSplitio/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx',
-  'https://huggingface.co/adowu/htdemucs-6s-onnx/resolve/main/htdemucs_6s_fp16weights.onnx'
-];
-const CACHE_NAME = 'isola-model-v1';
-const CACHE_KEY = self.location.origin + '/__model__/htdemucs_6s_fp16weights.onnx';
-const SEG = 343980;
-const post = (m, t) => self.postMessage(m, t || []);
 
-// ---- shared overlap-add core (also unit-tested) ----
-async function separate(L, R, runChunk, emit, progress) {
-  const N = L.length;
-  const OVERLAP = Math.floor(SEG / 4), STRIDE = SEG - OVERLAP, ROWS = 12;
-  // global normalisation, as in the official Demucs pipeline
-  let sum = 0;
-  for (let i = 0; i < N; i++) sum += (L[i] + R[i]) * 0.5;
-  const mean = sum / N;
-  let vs = 0;
-  for (let i = 0; i < N; i++) { const d = (L[i] + R[i]) * 0.5 - mean; vs += d * d; }
-  let std = Math.sqrt(vs / Math.max(1, N - 1));
-  if (!(std > 1e-8)) std = 1;
-  // triangular transition window
-  const W = new Float32Array(SEG), half = SEG >> 1;
-  for (let i = 0; i < SEG; i++) W[i] = i < half ? (i + 1) / half : (SEG - i) / half;
-  const offs = [];
-  for (let off = 0; ; off += STRIDE) { offs.push(off); if (off + SEG >= N) break; }
-  const acc = new Float32Array(ROWS * SEG), wsum = new Float32Array(SEG), input = new Float32Array(2 * SEG);
-  for (let k = 0; k < offs.length; k++) {
-    const off = offs[k], len = Math.min(SEG, N - off), last = k === offs.length - 1;
-    input.fill(0);
-    for (let i = 0; i < len; i++) { input[i] = (L[off + i] - mean) / std; input[SEG + i] = (R[off + i] - mean) / std; }
-    const out = await runChunk(input, k);
-    for (let r = 0; r < ROWS; r++) {
-      const b = r * SEG;
-      for (let i = 0; i < len; i++) acc[b + i] += out[b + i] * W[i];
-    }
-    for (let i = 0; i < len; i++) wsum[i] += W[i];
-    const emitLen = last ? len : STRIDE;
-    const rows = [];
-    for (let r = 0; r < ROWS; r++) {
-      const b = r * SEG, o = new Float32Array(emitLen);
-      for (let i = 0; i < emitLen; i++) o[i] = acc[b + i] / Math.max(wsum[i], 1e-8) * std + mean;
-      rows.push(o);
-    }
-    emit(rows, k);
-    if (!last) {
-      for (let r = 0; r < ROWS; r++) {
-        const b = r * SEG;
-        acc.copyWithin(b, b + STRIDE, b + SEG);
-        acc.fill(0, b + SEG - STRIDE, b + SEG);
-      }
-      wsum.copyWithin(0, STRIDE, SEG);
-      wsum.fill(0, SEG - STRIDE, SEG);
-    }
-    progress(k + 1, offs.length);
-  }
-}
-
-async function getModel() {
-  let cache = null;
-  try { cache = await caches.open(CACHE_NAME); } catch (e) {}
-  if (cache) {
-    try {
-      const hit = await cache.match(CACHE_KEY);
-      if (hit) { post({ type: 'status', text: 'Loading the AI model…' }); return new Uint8Array(await hit.arrayBuffer()); }
-    } catch (e) {}
-  }
-  let lastErr = null;
-  for (const url of MODEL_URLS) {
-    try {
-      post({ type: 'status', text: 'Downloading the AI model (first time only)…' });
-      const res = await fetch(url, { mode: 'cors', credentials: 'omit' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const total = +res.headers.get('content-length') || 0;
-      const reader = res.body.getReader();
-      let buf = total ? new Uint8Array(total) : null, parts = [], got = 0, t0 = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (buf && got + value.length <= total) buf.set(value, got);
-        else { if (buf) { parts.push(buf.slice(0, got)); buf = null; } parts.push(value); }
-        got += value.length;
-        const now = Date.now();
-        if (now - t0 > 250) { t0 = now; post({ type: 'download', got, total }); }
-      }
-      let bytes;
-      if (buf && got === total) bytes = buf;
-      else {
-        if (buf) parts.unshift(buf.slice(0, got));
-        bytes = new Uint8Array(got); let o = 0;
-        for (const p of parts) { bytes.set(p, o); o += p.length; }
-      }
-      if (bytes.length < 50e6) throw new Error('Model download looks incomplete');
-      if (cache) { try { await cache.put(CACHE_KEY, new Response(bytes, { headers: { 'content-type': 'application/octet-stream' } })); } catch (e) {} }
-      return bytes;
-    } catch (e) { lastErr = e; }
-  }
-  throw new Error('Could not download the AI model. Check your internet connection. (' + (lastErr && lastErr.message) + ')');
-}
-
-async function makeSession(bytes, ep) {
-  const opts = ep === 'webgpu'
-    ? { executionProviders: ['webgpu'], graphOptimizationLevel: 'all' }
-    : { executionProviders: ['wasm'], graphOptimizationLevel: 'all', enableCpuMemArena: false, enableMemPattern: false };
-  return ort.InferenceSession.create(bytes, opts);
-}
-
-async function runWith(session, input) {
-  const feeds = {};
-  feeds[session.inputNames[0]] = new ort.Tensor('float32', input, [1, 2, SEG]);
-  const res = await session.run(feeds);
-  const t = res[session.outputNames[0]];
-  let d = t.data;
-  if (t.location && t.location !== 'cpu') d = await t.getData(true);
-  return d;
-}
-
-function looksValid(input, out) {
-  // the six stems should add up (roughly) to the input mix
-  let e = 0, s = 0;
-  for (let c = 0; c < 2; c++) for (let i = 0; i < SEG; i += 7) {
-    let y = 0;
-    for (let st = 0; st < 6; st++) y += out[(st * 2 + c) * SEG + i];
-    if (!Number.isFinite(y)) return false;
-    const x = input[c * SEG + i]; e += (y - x) * (y - x); s += x * x;
-  }
-  return s < 1e-6 || e / s < 0.5;
-}
-
-self.onmessage = async (ev) => {
-  const m = ev.data;
-  if (m.type !== 'run') return;
-  try {
-    ort.env.wasm.wasmPaths = CDN;
-    const cores = (self.navigator && navigator.hardwareConcurrency) || 2;
-    ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.max(1, Math.min(4, cores - 1)) : 1;
-    const bytes = await getModel();
-    post({ type: 'status', text: 'Starting the splitter…' });
-    let session = null, ep = 'wasm';
-    if (m.engine !== 'cpu' && self.navigator && navigator.gpu) {
-      try {
-        const adapter = await navigator.gpu.requestAdapter();
-        if (adapter) { session = await makeSession(bytes, 'webgpu'); ep = 'webgpu'; }
-      } catch (e) { session = null; }
-    }
-    if (!session) { session = await makeSession(bytes, 'wasm'); ep = 'wasm'; }
-    const engineLabel = () => ep === 'webgpu' ? 'Graphics chip (WebGPU)' : ('Processor · ' + ort.env.wasm.numThreads + (ort.env.wasm.numThreads > 1 ? ' threads' : ' thread'));
-    post({ type: 'engine', ep, label: engineLabel() });
-    let modelBytes = bytes;
-    const runChunk = async (input, k) => {
-      const t = performance.now();
-      let out;
-      try { out = await runWith(session, input); }
-      catch (e) {
-        if (ep !== 'webgpu') throw e;
-        out = null;
-      }
-      if (k === 0 && ep === 'webgpu' && (!out || !looksValid(input, out))) {
-        try { await session.release(); } catch (e) {}
-        session = await makeSession(modelBytes, 'wasm'); ep = 'wasm';
-        post({ type: 'engine', ep, label: engineLabel() });
-        out = await runWith(session, input);
-      }
-      if (k === 0) modelBytes = null;
-      post({ type: 'chunktime', ms: performance.now() - t });
-      return out;
-    };
-    await separate(m.L, m.R, runChunk,
-      (rows, k) => post({ type: 'block', k, rows }, rows.map(r => r.buffer)),
-      (done, total) => post({ type: 'progress', done, total }));
-    try { await session.release(); } catch (e) {}
-    post({ type: 'done', ep });
-  } catch (e) {
-    post({ type: 'error', message: (e && e.message) || String(e) });
-  }
-};
-</script>
-
-<!-- ================= MP3 ENCODER WORKER (classic) ================= -->
-<script type="text/plain" id="w-enc">
-var LAME_URL = 'https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js';
-var ready = null, encs = {}, parts = {}, kbps = 192;
-function load() {
-  if (!ready) ready = fetch(LAME_URL).then(function (r) {
-    if (!r.ok) throw new Error('Could not load the MP3 encoder');
-    return r.text();
-  }).then(function (src) {
-    importScripts(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
-  });
-  return ready;
-}
-function toI16(f) {
-  var o = new Int16Array(f.length);
-  for (var i = 0; i < f.length; i++) { var s = f[i]; s = s > 1 ? 1 : s < -1 ? -1 : s; o[i] = s < 0 ? s * 32768 : s * 32767; }
-  return o;
-}
-function encode(key, l, r) {
-  var enc = encs[key], li = toI16(l), ri = toI16(r), B = 1152 * 32;
-  for (var i = 0; i < li.length; i += B) {
-    var mp3 = enc.encodeBuffer(li.subarray(i, i + B), ri.subarray(i, i + B));
-    if (mp3.length) parts[key].push(mp3);
-  }
-}
-self.onmessage = function (e) {
-  var m = e.data;
-  load().then(function () {
-    if (m.type === 'start') {
-      kbps = m.kbps || 192;
-      m.keys.forEach(function (k) { encs[k] = new lamejs.Mp3Encoder(2, 44100, kbps); parts[k] = []; });
-    } else if (m.type === 'pcm') {
-      encode(m.key, m.l, m.r);
-    } else if (m.type === 'finish') {
-      var blobs = {};
-      Object.keys(encs).forEach(function (k) {
-        var f = encs[k].flush(); if (f.length) parts[k].push(f);
-        blobs[k] = new Blob(parts[k], { type: 'audio/mpeg' });
-      });
-      encs = {}; parts = {};
-      self.postMessage({ type: 'done', blobs: blobs });
-    }
-  }).catch(function (err) { self.postMessage({ type: 'error', message: String(err && err.message || err) }); });
-};
-</script>
 
 <!-- ================= APP ================= -->
 <script>
 'use strict';
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const SR = 44100;
-const SS_URL = 'https://cdn.jsdelivr.net/npm/signalsmith-stretch@1.3.2/SignalsmithStretch.mjs';
+const SS_URL = new URL('lib/SignalsmithStretch.mjs', location.href).href;
 // model output order: 0 drums, 1 bass, 2 other, 3 vocals, 4 guitar, 5 piano
 const STEMS = [
   { key: 'vocals', idx: 3, name: 'Vocals', color: '#ff5c8a' },
@@ -583,8 +357,7 @@ $('#file').onchange = async e => {
 
 let job = null;
 function makeWorker(id, module) {
-  const url = URL.createObjectURL(new Blob([document.getElementById(id).textContent], { type: 'text/javascript' }));
-  return module ? new Worker(url, { type: 'module' }) : new Worker(url);
+  return module ? new Worker('sep-worker.js', { type: 'module' }) : new Worker('enc-worker.js');
 }
 let wakeLock = null;
 async function keepAwake(on) {
@@ -594,7 +367,6 @@ async function keepAwake(on) {
   } catch (e) {}
 }
 document.addEventListener('visibilitychange', () => { if (job && document.visibilityState === 'visible') keepAwake(true); });
-window.addEventListener('beforeunload', e => { if (job) { e.preventDefault(); e.returnValue = ''; } });
 
 async function splitSong(title, buf) {
   const N = buf.length, duration = N / SR;
@@ -1058,13 +830,7 @@ $('#btn-settings').onclick = async () => {
 
 /* ---------- service worker (offline + multi-threading) ---------- */
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  navigator.serviceWorker.register('sw.js').then(() => {
-    if (!window.crossOriginIsolated && !sessionStorage.getItem('isola-coi')) {
-      sessionStorage.setItem('isola-coi', '1');
-      if (navigator.serviceWorker.controller) location.reload();
-      else navigator.serviceWorker.addEventListener('controllerchange', () => location.reload(), { once: true });
-    }
-  }).catch(() => {});
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 renderLibrary();
 </script>
