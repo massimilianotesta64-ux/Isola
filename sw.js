@@ -1,8 +1,8 @@
 // Isola service worker: works offline and enables multi-threaded splitting
 // (adds the cross-origin isolation headers GitHub Pages can't set itself).
-const APP_CACHE = 'isola-app-v3';
+const APP_CACHE = 'isola-app-v4';
 const LIB_CACHE = 'isola-libs-v1';
-const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './sep-worker.js', './enc-worker.js', './lib/lame.min.js', './lib/SignalsmithStretch.mjs'];
+const CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './sep-worker.js', './dsp.js', './enc-worker.js', './lib/lame.min.js', './lib/SignalsmithStretch.mjs'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(APP_CACHE).then(c => c.addAll(CORE)).catch(() => {}).then(() => self.skipWaiting()));
@@ -11,7 +11,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
     for (const k of await caches.keys()) {
-      if (k.startsWith('isola-') && k !== APP_CACHE && k !== LIB_CACHE && k !== 'isola-model-v1') await caches.delete(k);
+      if (k.startsWith('isola-') && k !== APP_CACHE && k !== LIB_CACHE && k !== 'isola-model-v2') await caches.delete(k);
     }
     await self.clients.claim();
   })());
